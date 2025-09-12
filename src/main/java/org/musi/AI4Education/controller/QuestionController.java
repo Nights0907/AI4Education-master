@@ -17,7 +17,6 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 
-import javax.annotation.Resource;
 import java.io.IOException;
 import java.util.*;
 import java.sql.Date;
@@ -62,6 +61,7 @@ public class QuestionController {
             String question_text = res.getString("latex");
             System.out.println("题干文本信息: "+question_text);
 
+            // 在这里加入 RAG 逻辑
             String answerAndExplanationAndKnoeledges=concreteQuestionService.useWenxinStreamTransformToGetAnswerAndExplanationAndKnowledge(question_text);
             String steps=concreteQuestionService.useWenxinStreamTransformToGetSteps(question_text);
 

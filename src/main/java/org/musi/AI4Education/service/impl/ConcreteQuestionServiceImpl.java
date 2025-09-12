@@ -3,16 +3,18 @@ package org.musi.AI4Education.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import javax.annotation.Resource;
+
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.bson.Document;
 import org.json.JSONException;
-import org.json.JSONObject;
 import org.musi.AI4Education.common.CommonResponse;
 import org.musi.AI4Education.config.Wen_XinConfig;
 import org.musi.AI4Education.config.WenxinConfig;
 import org.musi.AI4Education.domain.*;
 import org.musi.AI4Education.mapper.ConcreteQuestionMapper;
+import org.musi.AI4Education.service.AiCodeHelperService;
 import org.musi.AI4Education.service.BasicQuestionService;
 import org.musi.AI4Education.service.ConcreteQuestionService;
 import org.musi.AI4Education.service.StudentService;
@@ -24,24 +26,18 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import javax.annotation.Resource;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 
 @Service
 @Slf4j
@@ -66,6 +62,9 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
 
     List<Map<String,String>> listMessage1 = new ArrayList<>();
     private static final WebClient WEB_CLIENT = WebClient.builder().baseUrl("https://aip.baidubce.com").defaultHeader(HttpHeaders.CONTENT_TYPE, org.springframework.http.MediaType.APPLICATION_STREAM_JSON_VALUE).build();
+
+    @Resource
+    private AiCodeHelperService aiCodeHelperService;
 
 
     /**
@@ -567,6 +566,8 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
         return json;
     }
 
+
+    // 在这一步加入 RAG 逻辑
     @Override
     public String connectWithBigModelStreamTransition(String question) throws IOException {
         OkHttpClient client = new OkHttpClient();
@@ -575,6 +576,22 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
         user.put("role","user");
         user.put("content",question);
         messages.add(user);
+
+
+        // 使用collectList收集所有块，然后阻塞直到完成
+        List<String> chunks = aiCodeHelperService.chatStream(question)
+                .collectList()
+                .block(); // 阻塞直到所有数据块收集完成
+
+        String completeResponse = String.join("", chunks);
+        // 处理完整响应
+
+        System.out.println(completeResponse);
+
+        return completeResponse;
+
+        /**
+
         String requestJson = constructRequestJson(1,0.95,0.8,1.0,true,messages);
         RequestBody body = RequestBody.create(MediaType.parse("application/json"), requestJson);
         Request request = new Request.Builder()
@@ -624,6 +641,8 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
         }
         messages.add(assistant);
         return assistant.get("content");
+
+         **/
     }
 
     @Override

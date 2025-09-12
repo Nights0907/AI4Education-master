@@ -61,18 +61,23 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
     private ChatGPTService chatGPTservice;
     @Autowired
     private ConcreteQuestionService concreteQuestionService;
+
     private Map<String, ChatSession> sessions = new HashMap<>(); // Store sessions using user IDs
     @Autowired
     private BasicQuestionService basicQuestionService;
-    private String OPENAI_KEY = System.getenv("OPENAI_KEY");
+    private String OPENAI_KEY = "sk-eb3b86139e574719aa5aed8dc1348cc7";;
 
+    //服务器测试版本
     @PostConstruct
     public void postConstruct() {
         this.webClient = WebClient.builder()//创建webflux的client
-                .baseUrl("https://gateway.ai.cloudflare.com/v1/323f46a86f2c41a6c889c57cccac62fb/musi/openai")//填写对应的api地址
+                //.baseUrl("https://gateway.ai.cloudflare.com/v1/323f46a86f2c41a6c889c57cccac62fb/musi/openai")//填写对应的api地址
+                .baseUrl("https://dashscope.aliyuncs.com/compatible-mode/v1")//填写对应的api地址
                 .defaultHeader("Content-Type", "application/json")//设置默认请求类型
                 .build();
     }
+
+
     @Override
     public StudentProfile getStudentProfileBySid(String sid) {
 
