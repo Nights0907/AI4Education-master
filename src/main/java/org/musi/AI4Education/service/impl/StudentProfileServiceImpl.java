@@ -314,8 +314,7 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
     public void useWenxinUpdateCharacterPointByQidAndSid(StudentProfile studentProfile) throws IOException {
         String sid = studentProfile.getSid();
         List<String> qidList = basicQuestionService.getQidListBySid(sid);
-        String qid = "1711249417288";
-        String qidForChatHistory = qid + "008";
+        String qid = qidList.get(qidList.size()-1);
         //获得历史聊天记录
         ExplanationChatHistory explanationChatHistory = chatGPTservice.getExplanationChatHistoryByQid(qid);
         FeimanChatHistory feimanChatHistory = chatGPTservice.getFeimanChatHistoryByQid(qid);
@@ -326,7 +325,7 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
         String first = "";
 
         //路径需要修改
-        String filePath = "E:\\projects\\AI4Education-master\\src\\main\\java\\Python_API\\Inspiration\\prompt.txt";
+        String filePath = "E:\\projects\\AI4Education-master\\src\\main\\java\\Python_API\\PersonalCharactor\\prompt.txt";
 
         try {
             // 创建FileReader对象
@@ -349,9 +348,7 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
         question = first + "下面是对话记录：" + mergedChatHistories + "\n请只返回如<output>那样的内容,不用带上<output>";
         String result = concreteQuestionService.connectWithBigModelStreamTransition(question);
 
-//        System.out.println("------解析的个性偏好---------\n" + result);
-
-        //            处理字符串
+        // 处理字符串
         List<CharacterPoint> characterPointList = new ArrayList<>();
 
         Pattern pattern = Pattern.compile("\\[(.*?):(.*?)\\]");
@@ -374,27 +371,9 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
         }
 
         //存入MongoDB
-
-//            // 组合多个查询条件，并在MongoDB中查询
-//            Criteria criteria = Criteria.where("sid").is(sid);
-//            Query query = new Query(criteria);
-//            List<StudentProfile> result = mongoTemplate.find(query, StudentProfile.class);
-//
-//            if (result.isEmpty()) {
-//                System.out.println("查询结果为空");
-//                StudentProfile studentProfile = new StudentProfile();
-//                studentProfile.setSid(sid);
-//                mongoTemplate.insert(characterPointList);
-//            } else {
-//                System.out.println("查询结果不为空");
-//                Update update = new Update().set("characterPointList", mergeCharacterPoint(characterPointList, result.get(0).getCharacterPointList()));
-//                mongoTemplate.updateFirst(query, update, "StudentProfile");
-//            }
-
         Query query_1 = new Query(Criteria.where("sid").is(sid));
         Update update = new Update();
         update.set("characterPointList",characterPointList);
-//        System.out.println("characterPointList\n" + characterPointList);
         mongoTemplate.updateFirst(query_1, update, "studentProfile"); // 你的文档类名替换为实际的类名
     }
 
@@ -403,11 +382,9 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
             List<CharacterPoint> characterPointList,
             List<CharacterPoint> characterPointList1) {
         List<CharacterPoint> result = new ArrayList<>();
-//        放入新的
         result.addAll(characterPointList);
         for(CharacterPoint oldCharacterPoint : characterPointList1){
             for(CharacterPoint newCharacterPoint : characterPointList){
-//               放入旧的
                 if(!oldCharacterPoint.getType().equals(newCharacterPoint.getType())){
                     result.add(oldCharacterPoint);
                 }

@@ -1,6 +1,7 @@
 package org.musi.AI4Education.domain;
 
 import lombok.Data;
+import lombok.Data;
 
 import java.util.List;
 
