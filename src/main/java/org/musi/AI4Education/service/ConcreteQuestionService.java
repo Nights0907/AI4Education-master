@@ -2,6 +2,7 @@ package org.musi.AI4Education.service;
 
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.extension.service.IService;
+import dev.langchain4j.service.SystemMessage;
 import org.json.JSONException;
 import org.musi.AI4Education.common.CommonResponse;
 import org.musi.AI4Education.domain.*;
@@ -54,6 +55,8 @@ public interface ConcreteQuestionService extends IService<ConcreteQuestion> {
     public String connectWithBigModelStreamTransition(String question) throws IOException;
 
 
+    public String chatWithRAG(String question) throws IOException;
+
     public ChatHistory getChatHistoryByQid(String qid) throws IOException;
 
     public WrongReasonChatHistory getWrongAnswerChatHistoryByQid(String qid) throws IOException;
@@ -70,4 +73,6 @@ public interface ConcreteQuestionService extends IService<ConcreteQuestion> {
     public ConcreteQuestion getConcreteQuestionByQid(ConcreteQuestion concreteQuestion);
 
     public Map<String, String> parseStringToObject(String data);
+
+    public String answerWithRag(String query);
 }

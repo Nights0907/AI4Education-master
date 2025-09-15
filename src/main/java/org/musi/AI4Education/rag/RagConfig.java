@@ -112,9 +112,9 @@ public class RagConfig {
 
         System.out.println("RAG query: " + query);
         System.out.println("RAG semantic: " + semantic.size() + ", bm25: " + bm25.size() + ", merged: " + merged.size() + ", final: " + finalRanked.size());
-        for (Content c : finalRanked) {
-            System.out.println("RAG segment: " + c);
-        }
+//        for (Content c : finalRanked) {
+//            System.out.println("RAG segment: " + c);
+//        }
         return finalRanked;
     }
 

@@ -5,6 +5,12 @@ import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import javax.annotation.Resource;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.service.SystemMessage;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.bson.Document;
@@ -14,6 +20,7 @@ import org.musi.AI4Education.config.Wen_XinConfig;
 import org.musi.AI4Education.config.WenxinConfig;
 import org.musi.AI4Education.domain.*;
 import org.musi.AI4Education.mapper.ConcreteQuestionMapper;
+import org.musi.AI4Education.model.wenxin.WenxinChatModel;
 import org.musi.AI4Education.service.AiCodeHelperService;
 import org.musi.AI4Education.service.BasicQuestionService;
 import org.musi.AI4Education.service.ConcreteQuestionService;
@@ -38,6 +45,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -66,6 +74,11 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
     @Resource
     private AiCodeHelperService aiCodeHelperService;
 
+    @Resource
+    private ContentRetriever contentRetriever;
+
+    @Resource
+    private WenxinChatModel wenxinChatModel;
 
     /**
      * 构造请求的请求参数
@@ -96,8 +109,8 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
 
     @Override
     public String useWenxinStreamTransformToGetAnswerAndExplanationAndKnowledge(String question) throws IOException {
-        question = "我将会传输带有latex公式的数学题目，只需要给出(1)题目的标准答案(2)题目的简略解析(3)题目考察的与数学相关的知识点，将答案、简略解析以及知识点分别用[]括起来，例如“[答案：2],[解析：1+1=2],[{加法原理},{乘法原理}]”,下面是题目： "+question;
-        return connectWithBigModelStreamTransition(question);
+        String ststemMessage = "我将会传输带有latex公式的数学题目，只需要给出(1)题目的标准答案(2)题目的简略解析(3)题目考察的与数学相关的知识点，将答案、简略解析以及知识点分别用[]括起来，例如“[答案：2],[解析：1+1=2],[{加法原理},{乘法原理}]”,记住不能使用诸如计算器、近似值的办法，下面是题目：";
+        return connectWithBigModelStreamTransition(ststemMessage + question);
     }
 
     @Override
@@ -137,20 +150,49 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
     @Override
     public String useWenxinStreamTransformToGetSteps(String question) throws IOException {
 
-        String sid = StpUtil.getLoginIdAsString();
-        String description = studentService.getStudentBySid(sid).getDescription();
+        // String sid = StpUtil.getLoginIdAsString();
+        // String description = studentService.getStudentBySid(sid).getDescription();
         //按照 CO-STAR 框架进行 Prompt 升级
-        question =
-                "我将会提供带有LaTeX公式的数学题目和学生基本情况,"+description+"只需要给出该题目的解题步骤。"+
-                "参照高考题目的解题格式，分条分行，逻辑清晰。题目解题步骤的受众主要是初中以及高中的学生。"+
-                "请针对这一群体来生成题目的解题步骤。保持解题步骤简洁而有逻辑。每一个单独的解题步骤的全部内容都分别要用[]中括号括起来表示，如："+
-                "[1.理解题意：这是一道双向而行的问题,两辆车由相向而行变成背向而行，如果设两地之间的距离为x，那么甲车行驶的距离为（2/3x），乙车行驶的距离为(45%x)]"+
-                "[2.列方程：（2/3）x+(45%)x-35=x，接下来是解题步骤]"+
-                "[3.解方程：x=300，解题完成]"+
-                "以此类推，下面是题目:"+question;
+//        question =
+//                "我将会提供带有LaTeX公式的数学题目,只需要给出该题目的解题步骤。"+
+//                "参照高考题目的解题格式，分条分行，逻辑清晰。题目解题步骤的受众主要是初中以及高中的学生。"+
+//                "请针对这一群体来生成题目的解题步骤。保持解题步骤简洁而有逻辑。每一个单独的解题步骤的全部内容都分别要用[]中括号括起来表示，如："+
+//                "[1.理解题意：这是一道双向而行的问题,两辆车由相向而行变成背向而行，如果设两地之间的距离为x，那么甲车行驶的距离为（2/3x），乙车行驶的距离为(45%x)]"+
+//                "[2.列方程：（2/3）x+(45%)x-35=x，接下来是解题步骤]"+
+//                "[3.解方程：x=300，解题完成]"+
+//                "以此类推,记住不能使用诸如计算器、近似值的办法,下面是题目:"+question;
 
-        return connectWithBigModelStreamTransition(question);
+        return answerWithRag(question);
+    }
 
+    // ARG 部分
+    public String answerWithRag(String query) {
+        List<Content> contents = contentRetriever.retrieve(dev.langchain4j.rag.query.Query.from(query));
+        String context = contents.stream().map(Object::toString).collect(Collectors.joining("\n\n"));
+
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(dev.langchain4j.data.message.SystemMessage.from("你是一个乐于助人的中文助理。请基于提供的检索上下文回答问题，若上下文无关则直说不知道。"));
+
+        String formatted = "你是一名擅长中学数学讲解的助教。现在请严格按照以下规则，给出题目的解题步骤：\\n"
+                + "1) 仅输出步骤列表，不要输出任何额外说明、前后缀或空行。\\n"
+                + "2) 每一个独立步骤必须完整地放在一对中括号[]内，且每个[]内部以阿拉伯数字开头编号，如：[1. ...]、[2. ...]。\\n"
+                + "3) 所有步骤都要覆盖从审题到列式、运算、化简、结论或单位等关键环节，保证逻辑清晰、面向初高中生、语言简洁。\\n"
+                + "4) 题目中可能包含 LaTeX 公式，请原样保留并正确使用，不要破坏公式格式。\\n"
+                + "5) 严禁使用计算器或近似值，严禁跳步或省略关键推导，若有条件或结论需要说明，请在对应步骤的[]内简要说明。\\n"
+                + "6) 除了[]步骤外，禁止出现任何其他文本、标点或空白行（包括“解：”“答：”“总结”等）。\\n"
+                + "示例格式（仅示意，非该题答案）：\\n"
+                + "[1. 审题与已知：……]\\n"
+                + "[2. 设未知量并转化：……]\\n"
+                + "[3. 列方程/函数/几何关系（保留 LaTeX）：……]\\n"
+                + "[4. 变形与求解（逐步推导、保留 LaTeX）：……]\\n"
+                + "[5. 结论与检验：……]\\n"
+                + "现在请仅输出满足以上规则的步骤列表。";;
+        messages.add(dev.langchain4j.data.message.SystemMessage.from(formatted));
+
+        messages.add(UserMessage.from("上下文：\n" + context + "\n\n问题：" + query));
+
+        dev.langchain4j.model.output.Response<AiMessage> resp = wenxinChatModel.generate(messages);
+        return resp == null || resp.content() == null ? "" : resp.content().text();
     }
 
     @Override
@@ -548,7 +590,6 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
         return concreteQuestion1;
     }
 
-
     @Override
     public JSON connectWithBigModel(String content) throws IOException {
         String access_token = new WenxinConfig().getWenxinToken();
@@ -567,16 +608,14 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
     }
 
 
-    // 在这一步加入 RAG 逻辑
     @Override
-    public String connectWithBigModelStreamTransition(String question) throws IOException {
-        OkHttpClient client = new OkHttpClient();
+    @SystemMessage(fromResource = "system_prompt.txt")
+    public String chatWithRAG(String question) throws IOException {
 
         HashMap<String, String> user = new HashMap<>();
         user.put("role","user");
-        user.put("content",question);
+        user.put("content", question);
         messages.add(user);
-
 
         // 使用collectList收集所有块，然后阻塞直到完成
         List<String> chunks = aiCodeHelperService.chatStream(question)
@@ -589,9 +628,16 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
         System.out.println(completeResponse);
 
         return completeResponse;
+    }
 
-        /**
 
+    public String connectWithBigModelStreamTransition(String question) throws IOException {
+        OkHttpClient client = new OkHttpClient();
+
+        HashMap<String, String> user = new HashMap<>();
+        user.put("role","user");
+        user.put("content",question);
+        messages.add(user);
         String requestJson = constructRequestJson(1,0.95,0.8,1.0,true,messages);
         RequestBody body = RequestBody.create(MediaType.parse("application/json"), requestJson);
         Request request = new Request.Builder()
@@ -615,7 +661,7 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
                         int bytesRead;
                         while ((bytesRead = inputStream.read(buffer)) != -1) {
                             // 在控制台输出每个数据块
-                            System.out.write(buffer, 0, bytesRead);
+                            // System.out.write(buffer, 0, bytesRead);
                             //将结果汇总起来
                             answer.append(new String(buffer, 0, bytesRead));
                         }
@@ -641,8 +687,6 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
         }
         messages.add(assistant);
         return assistant.get("content");
-
-         **/
     }
 
     @Override

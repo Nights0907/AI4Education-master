@@ -66,7 +66,22 @@ public class QuestionController {
             String steps=concreteQuestionService.useWenxinStreamTransformToGetSteps(question_text);
 
             System.out.println(answerAndExplanationAndKnoeledges);
+
+            System.out.println("____________________________________________________________________________");
+            System.out.println("____________________________________________________________________________");
+            System.out.println("____________________________________________________________________________");
+            System.out.println("____________________________________________________________________________");
+            System.out.println("____________________________________________________________________________");
+            System.out.println("____________________________________________________________________________");
+
             System.out.println(steps);
+
+            System.out.println("____________________________________________________________________________");
+            System.out.println("____________________________________________________________________________");
+            System.out.println("____________________________________________________________________________");
+            System.out.println("____________________________________________________________________________");
+            System.out.println("____________________________________________________________________________");
+            System.out.println("____________________________________________________________________________");
 
             List<String> result = concreteQuestionService.splitAnswerAndExplanation(answerAndExplanationAndKnoeledges);
             String answer = result.get(0);
