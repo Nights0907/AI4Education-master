@@ -38,6 +38,7 @@ import reactor.core.publisher.Flux;
 
 
 import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -66,6 +67,7 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
     @Autowired
     private BasicQuestionService basicQuestionService;
     private String OPENAI_KEY = "sk-eb3b86139e574719aa5aed8dc1348cc7";;
+
 
     //服务器测试版本
     @PostConstruct
