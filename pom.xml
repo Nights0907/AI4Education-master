@@ -306,11 +306,31 @@
             <artifactId>lucene-queryparser</artifactId>
             <version>9.9.2</version>
         </dependency>
-        <!--        <dependency>-->
-        <!--            <groupId>jakarta.annotation</groupId>-->
-        <!--            <artifactId>jakarta.annotation-api</artifactId>-->
-        <!--            <version>2.1.1</version>-->
-        <!--        </dependency>-->
+
+
+
+        <dependency>
+            <groupId>io.milvus</groupId>
+            <artifactId>milvus-sdk-java</artifactId>
+            <version>2.6.2</version>
+        </dependency>
+
+<!--        <dependency>-->
+<!--            <groupId>dev.langchain4j</groupId>-->
+<!--            <artifactId>langchain4j-milvus</artifactId>-->
+<!--            <version>1.1.0-beta7</version>-->
+<!--        </dependency>-->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-milvus</artifactId>
+            <version>1.0.0-beta3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>milvus</artifactId>
+            <version>1.19.7</version>
+            <!-- <scope>test</scope> -->
+        </dependency>
 
     </dependencies>
 

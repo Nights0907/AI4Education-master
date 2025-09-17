@@ -10,7 +10,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
+// 移除了EmbeddingStoreIngestor import，现在由DocumentVectorService处理
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,7 +18,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.ArrayList;
-import java.util.Comparator;
+// 移除了Comparator import，未使用
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -36,28 +36,29 @@ public class RagConfig {
 
     @Bean
     public ContentRetriever contentRetriever() {
-        // ------ Ingest to embedding store ------
-        List<Document> documents = ClassPathDocumentLoader.loadDocuments("questions");
-        System.out.println("RAG loaded documents: " + documents.size());
-        // 使用更短的片段，避免返回内容过长
-        DocumentByParagraphSplitter paragraphSplitter = new DocumentByParagraphSplitter(300, 100);
-        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
-                .documentSplitter(paragraphSplitter)
-                .textSegmentTransformer(textSegment -> TextSegment.from(
-                        textSegment.metadata().getString("file_name") + "\n" + textSegment.text(),
-                        textSegment.metadata()
-                ))
-                .embeddingModel(qwenEmbeddingModel)
-                .embeddingStore(embeddingStore)
-                .build();
-        ingestor.ingest(documents);
+        // 注意：文档向量化现在由DocumentVectorService在启动时自动处理
+        // 这里只需要配置检索器，不需要重新嵌入文档
+        
+        // 初始化Lucene索引（用于BM25检索）
+        initializeLuceneIndex();
 
-        // Build Lucene BM25 index from text segments
+        return query -> retrieveWithBm25AndRerank(String.valueOf(query));
+    }
+    
+    /**
+     * 初始化Lucene索引
+     */
+    private void initializeLuceneIndex() {
         try {
+            // 加载文档用于构建Lucene索引
+            List<Document> documents = ClassPathDocumentLoader.loadDocuments("questions");
+            DocumentByParagraphSplitter paragraphSplitter = new DocumentByParagraphSplitter(300, 100);
+            
             org.apache.lucene.index.IndexWriter writer = new org.apache.lucene.index.IndexWriter(
                     luceneDirectory,
                     new org.apache.lucene.index.IndexWriterConfig(luceneAnalyzer)
             );
+            
             for (Document doc : documents) {
                 String fileName = doc.metadata().getString("file_name");
                 java.util.List<dev.langchain4j.data.segment.TextSegment> segments = paragraphSplitter.split(doc);
@@ -74,8 +75,6 @@ public class RagConfig {
         } catch (Exception e) {
             throw new RuntimeException("Failed to build Lucene index", e);
         }
-
-        return query -> retrieveWithBm25AndRerank(String.valueOf(query));
     }
 
     private org.apache.lucene.store.Directory luceneDirectory;

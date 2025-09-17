@@ -6,8 +6,7 @@ import dev.langchain4j.community.model.dashscope.QwenStreamingChatModel;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
+// 移除了EmbeddingStore相关的import，现在使用Milvus
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.data.segment.TextSegment;
 import javax.annotation.Resource;
@@ -50,12 +49,10 @@ public class QwenChatModelConfig {
     public EmbeddingModel qwenEmbeddingModel() {
         return QwenEmbeddingModel.builder()
                 .apiKey(apiKey)
-                .modelName("text-embedding-v4")
+                .modelName("text-embedding-v1")
                 .build();
     }
 
-    @Bean
-    public EmbeddingStore<TextSegment> embeddingStore() {
-        return new InMemoryEmbeddingStore<>();
-    }
+    // 注意：EmbeddingStore现在由MilvusConfig配置，使用Milvus进行持久化存储
+    // 移除了内存存储的Bean定义
 }
