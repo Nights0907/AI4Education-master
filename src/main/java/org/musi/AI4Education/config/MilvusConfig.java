@@ -28,7 +28,7 @@ public class MilvusConfig {
     @Value("${milvus.collection:default}")
     private String collection;
 
-    @Value("${milvus.dimension:1024}")
+    @Value("${milvus.dimension:1536}")
     private int dimension;
 
     /**

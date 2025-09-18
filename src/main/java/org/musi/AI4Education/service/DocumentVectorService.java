@@ -80,6 +80,8 @@ public class DocumentVectorService {
 
         // 执行嵌入和存储
         ingestor.ingest(documents);
+        // 强制刷新以便 UI 及时可见
+        milvusAdminService.flushCollection();
     }
 
     /**
@@ -114,6 +116,7 @@ public class DocumentVectorService {
                     .build();
 
             ingestor.ingest(document);
+            milvusAdminService.flushCollection();
             System.out.println("新文档已添加到向量存储: " + document.metadata().getString("file_name"));
         } catch (Exception e) {
             System.err.println("添加文档到向量存储失败: " + e.getMessage());

@@ -47,7 +47,7 @@ milvus.host=localhost
 milvus.port=19530
 milvus.database=default
 milvus.collection=default
-milvus.dimension=1024
+milvus.dimension=1536
 ```
 
 **注意**：确保Milvus服务端已禁用身份验证，因为langchain4j-milvus不支持用户名密码认证。
@@ -144,7 +144,7 @@ GET /api/document/status
 如果遇到向量维度不匹配：
 
 1. 确认 `milvus.dimension` 配置与嵌入模型输出维度一致
-2. 通义千问text-embedding-v4模型的输出维度是1024
+2. 通义千问text-embedding-v1模型的输出维度是1536
 
 ### 5.3 Collection管理
 
@@ -171,7 +171,7 @@ GET /api/document/status
 
 ```java
 .indexType(IndexType.IVF_FLAT)
-.indexParameter(IndexParameter.ivfFlat().nlist(1024))
+.indexParameter(IndexParameter.ivfFlat().nlist(1536))
 ```
 
 ### 6.2 批量操作

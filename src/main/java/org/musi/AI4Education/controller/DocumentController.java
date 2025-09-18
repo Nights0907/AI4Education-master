@@ -30,7 +30,7 @@ public class DocumentController {
     private org.musi.AI4Education.service.MilvusAdminService milvusAdminService;
     @org.springframework.beans.factory.annotation.Value("${milvus.collection:default}")
     private String collectionName;
-    @org.springframework.beans.factory.annotation.Value("${milvus.dimension:1024}")
+    @org.springframework.beans.factory.annotation.Value("${milvus.dimension:1536}")
     private int milvusDim;
 
     /**
