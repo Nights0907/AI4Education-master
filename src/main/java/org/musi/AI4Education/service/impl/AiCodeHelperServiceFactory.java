@@ -9,10 +9,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.service.AiServices;
 import javax.annotation.Resource;
-
-import org.musi.AI4Education.model.wenxin.WenxinChatModel;
 import org.musi.AI4Education.service.AiCodeHelperService;
-import org.musi.AI4Education.tools.InterviewQuestionTool;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
