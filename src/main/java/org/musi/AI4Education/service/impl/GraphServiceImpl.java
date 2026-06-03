@@ -46,7 +46,7 @@ public class GraphServiceImpl implements GraphService {
     //获取已存的Json
     public JSONArray getRecords() {
         JSONArray jsonArray = new JSONArray();
-        String jsonFilePath = "D:\\json_generate\\output0.json";
+        String jsonFilePath = "json_generate/output0.json";
 
         try (FileReader fileReader = new FileReader(jsonFilePath)) {
             // 读取 JSON 文件内容

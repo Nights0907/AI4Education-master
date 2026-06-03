@@ -29,6 +29,11 @@ public class QwenChatModelConfig {
     private ChatModelListener chatModelListener;
 
     @Bean
+    public ChatModelListener chatModelListener() {
+        return new ChatModelListener() {};
+    }
+
+    @Bean
     public ChatModel myQwenChatModel() {
         return QwenChatModel.builder()
                 .apiKey(apiKey)

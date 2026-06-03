@@ -77,8 +77,8 @@ public class ChatGPTServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatHisto
         String answer = "";
         try {
             ProcessBuilder pb;
-                pb = new ProcessBuilder("/root/miniconda3/bin/python3.12", "/MusiProject/Python_API/TextAudioConversion/pcm_to_text.py");
-            //pb = new ProcessBuilder("G:\\connectChatGPT\\venv\\Scripts\\python.exe", "G:\\green-farm\\src\\main\\java\\Python_API\\TextAudioConversion\\pcm_to_text.py", filePath);
+                pb = new ProcessBuilder("python", "src/main/java/Python_API/TextAudioConversion/pcm_to_text.py");
+            //pb = new ProcessBuilder("python", "src/main/java/Python_API/TextAudioConversion/pcm_to_text.py", filePath);
             Process p = pb.start();
             BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream(),"gb2312"));
             String line;
@@ -101,11 +101,11 @@ public class ChatGPTServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatHisto
         try {
             ProcessBuilder pb;
             if (text == null) {
-                pb = new ProcessBuilder("/root/miniconda3/bin/python3.12", "/MusiProject/Python_API/TextAudioConversion/text_to_wav.py");
-                //pb = new ProcessBuilder("python", "G:\\greenfarm\\src\\main\\java\\Python_API\\TextAudioConversion\\text_to_wav.py", "你好, 欢迎使用文本转语音服务，接下来我将为你讲解数学题", wavPath);
+                pb = new ProcessBuilder("python", "src/main/java/Python_API/TextAudioConversion/text_to_wav.py");
+                //pb = new ProcessBuilder("python", "src/main/java/Python_API/TextAudioConversion/text_to_wav.py", "你好, 欢迎使用文本转语音服务，接下来我将为你讲解数学题", wavPath);
             }else {
-                pb = new ProcessBuilder("/root/miniconda3/bin/python3.12", "/MusiProject/Python_API/TextAudioConversion/text_to_wav.py");
-               // pb = new ProcessBuilder("python", "G:\\greenfarm\\src\\main\\java\\Python_API\\TextAudioConversion\\text_to_wav.py", text, wavPath);
+                pb = new ProcessBuilder("python", "src/main/java/Python_API/TextAudioConversion/text_to_wav.py");
+               // pb = new ProcessBuilder("python", "src/main/java/Python_API/TextAudioConversion/text_to_wav.py", text, wavPath);
             }
             Process p = pb.start();
             BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream(),"gb2312"));

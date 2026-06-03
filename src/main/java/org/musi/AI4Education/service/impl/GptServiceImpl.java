@@ -90,7 +90,7 @@ public class GptServiceImpl {
             String front = "这是我要向你询问的题目：" + question_text + "这道题的正确解法是：" + question_analysis+" 我的解题方法是："+wrongText;
             String result = "";
 
-            String filePath = "E:\\projects\\AI4Education-master\\src\\main\\java\\Python_API\\Inspiration\\prompt.txt";
+            String filePath = "src/main/java/Python_API/Inspiration/prompt.txt";
 
             try {
                 // 创建FileReader对象
@@ -297,7 +297,7 @@ public class GptServiceImpl {
 
             String result = "";
 
-            String filePath = "E:\\projects\\AI4Education-master\\src\\main\\java\\Python_API\\PersonalExplanation\\prompt_GPT4.txt";
+            String filePath = "src/main/java/Python_API/PersonalExplanation/prompt_GPT4.txt";
 
             try {
                 // 创建并使用FileReader对象
@@ -501,7 +501,7 @@ public class GptServiceImpl {
 
             List<String> resultList = new ArrayList<>();
 
-            String filePath = "E:\\projects\\AI4Education-master\\src\\main\\java\\Python_API\\FeimanLearningMethod\\prompt_GPT4.txt";
+            String filePath = "src/main/java/Python_API/FeimanLearningMethod/prompt_GPT4.txt";
 
             try {
                 // 创建并使用FileReader对象

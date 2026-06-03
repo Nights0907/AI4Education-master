@@ -35,7 +35,7 @@ public class OssController {
                 // 获取文件名
                 String fileName = file.getOriginalFilename();
                 // 指定文件保存路径
-                String filePath = "G:\\AudioFile\\" + fileName;
+                String filePath = "AudioFile/" + fileName;
                 // 创建文件输出流
                 FileOutputStream outputStream = new FileOutputStream(new File(filePath));
                 // 将上传的文件写入到输出流中
@@ -52,7 +52,7 @@ public class OssController {
 
     @GetMapping("/pic/download")
     public void downloadFile(@RequestParam String qid, @RequestParam String localFilePath) throws IOException {
-        String defaultLocalFilePath = "C:\\Users\\lenovo\\Desktop\\"; // 本地保存文件的路径
+        String defaultLocalFilePath = "downloads/";
         ossService.downloadFile(qid,defaultLocalFilePath);
     }
 }

@@ -14,6 +14,7 @@ import org.musi.AI4Education.domain.ChatHistory;
 import org.musi.AI4Education.domain.StudentProfile;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.musi.AI4Education.domain.*;
+import org.musi.AI4Education.config.Wen_XinConfig;
 import org.musi.AI4Education.mapper.BasicQuestionMapper;
 import org.musi.AI4Education.mapper.StudentProfileMapper;
 import org.musi.AI4Education.service.BasicQuestionService;
@@ -62,20 +63,20 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
     private ChatGPTService chatGPTservice;
     @Autowired
     private ConcreteQuestionService concreteQuestionService;
+    @Autowired
+    private Wen_XinConfig wenXinConfig;
 
     private Map<String, ChatSession> sessions = new HashMap<>(); // Store sessions using user IDs
     @Autowired
     private BasicQuestionService basicQuestionService;
-    private String OPENAI_KEY = "sk-eb3b86139e574719aa5aed8dc1348cc7";;
 
 
     //服务器测试版本
     @PostConstruct
     public void postConstruct() {
-        this.webClient = WebClient.builder()//创建webflux的client
-                //.baseUrl("https://gateway.ai.cloudflare.com/v1/323f46a86f2c41a6c889c57cccac62fb/musi/openai")//填写对应的api地址
-                .baseUrl("https://dashscope.aliyuncs.com/compatible-mode/v1")//填写对应的api地址
-                .defaultHeader("Content-Type", "application/json")//设置默认请求类型
+        this.webClient = WebClient.builder()
+                .baseUrl(wenXinConfig.BASE_URL)
+                .defaultHeader("Content-Type", "application/json")
                 .build();
     }
 
@@ -154,7 +155,7 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
 
         //构建请求对象
         ChatRequestDTO chatRequestDTO = new ChatRequestDTO();
-        chatRequestDTO.setModel("qwen-plus");//设置模型
+        chatRequestDTO.setModel(wenXinConfig.MODEL);//设置模型
         chatRequestDTO.setStream(true);//设置流式返回
         // 直接尝试获取会话对象
         ChatSession session = sessions.get(qidForChatHistory);
@@ -167,7 +168,7 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
 
         String first = "";
 
-        String filePath = "E:\\AI4Education\\src\\main\\java\\Python_API\\PersonalCharacter\\prompt.txt";
+        String filePath = "src/main/java/Python_API/PersonalCharactor/prompt.txt";
 
         try {
             // 创建FileReader对象
@@ -213,8 +214,8 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
         System.out.println(paramJson);
 
         return this.webClient.post()
-                .uri("/chat/completions")//请求uri
-                .header("Authorization", OPENAI_KEY)//设置成自己的key，获得key的方式可以在下文查看
+                .uri(wenXinConfig.CHAT_COMPLETIONS_PATH)//请求uri
+                .header("Authorization", wenXinConfig.authorizationHeader())
                 .header(HttpHeaders.ACCEPT, MediaType.TEXT_EVENT_STREAM_VALUE)//设置流式响应
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(BodyInserters.fromValue(paramJson))
@@ -231,7 +232,17 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
         System.out.println("this is feedback");
         System.out.println(resp);
 
-        if (StrUtil.equals("[DONE]",resp)){//[DONE]是消息结束标识
+        List<String> contents = extractStreamContents(resp);
+        if (!contents.isEmpty()) {
+            ChatSession session = sessions.getOrDefault(qidForContent, new ChatSession());
+            for (String content : contents) {
+                session.addContent(content);
+            }
+            sessions.put(qidForContent, session);
+            return Flux.empty();
+        }
+
+        if (isDoneChunk(resp)){//[DONE]是消息结束标识
             System.out.println(resp);
             /*
             目的：将大模型的返回结果存入数据库
@@ -327,7 +338,7 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
         String first = "";
 
         //路径需要修改
-        String filePath = "E:\\projects\\AI4Education-master\\src\\main\\java\\Python_API\\PersonalCharactor\\prompt.txt";
+        String filePath = "src/main/java/Python_API/PersonalCharactor/prompt.txt";
 
         try {
             // 创建FileReader对象
@@ -379,6 +390,51 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
         mongoTemplate.updateFirst(query_1, update, "studentProfile"); // 你的文档类名替换为实际的类名
     }
 
+
+    private boolean isDoneChunk(String resp) {
+        if (resp == null) {
+            return false;
+        }
+        String trimmed = resp.trim();
+        return "[DONE]".equals(trimmed) || "data: [DONE]".equals(trimmed);
+    }
+
+    private List<String> extractStreamContents(String data) {
+        List<String> contents = new ArrayList<>();
+        if (data == null || data.isBlank()) {
+            return contents;
+        }
+        String[] lines = data.split("\\r?\\n");
+        for (String line : lines) {
+            String payload = line.trim();
+            if (payload.isEmpty()) {
+                continue;
+            }
+            if (payload.startsWith("data:")) {
+                payload = payload.substring(5).trim();
+            }
+            if (payload.isEmpty() || "[DONE]".equals(payload)) {
+                continue;
+            }
+            try {
+                com.alibaba.fastjson.JSONObject root = com.alibaba.fastjson.JSONObject.parseObject(payload);
+                com.alibaba.fastjson.JSONArray choices = root.getJSONArray("choices");
+                if (choices == null || choices.isEmpty()) {
+                    continue;
+                }
+                com.alibaba.fastjson.JSONObject delta = choices.getJSONObject(0).getJSONObject("delta");
+                if (delta == null) {
+                    continue;
+                }
+                String content = delta.getString("content");
+                if (content != null && !content.isEmpty()) {
+                    contents.add(content);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return contents;
+    }
 
     private List<CharacterPoint> mergeCharacterPoint(
             List<CharacterPoint> characterPointList,

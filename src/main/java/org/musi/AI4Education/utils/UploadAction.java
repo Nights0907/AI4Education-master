@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.util.UUID;
 
 public class UploadAction {
-    private static final String fileSavePath = "/home/lighthouse/images/";
+    private static final String fileSavePath = "images/";
 
     private static final String ip = "175.178.5.157:80";
 

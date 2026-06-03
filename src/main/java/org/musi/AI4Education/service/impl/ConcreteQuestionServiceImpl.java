@@ -17,7 +17,6 @@ import org.bson.Document;
 import org.json.JSONException;
 import org.musi.AI4Education.common.CommonResponse;
 import org.musi.AI4Education.config.Wen_XinConfig;
-import org.musi.AI4Education.config.WenxinConfig;
 import org.musi.AI4Education.domain.*;
 import org.musi.AI4Education.mapper.ConcreteQuestionMapper;
 import org.musi.AI4Education.model.wenxin.WenxinChatModel;
@@ -25,7 +24,6 @@ import org.musi.AI4Education.service.AiCodeHelperService;
 import org.musi.AI4Education.service.BasicQuestionService;
 import org.musi.AI4Education.service.ConcreteQuestionService;
 import org.musi.AI4Education.service.StudentService;
-import org.musi.AI4Education.utils.HttpRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -36,10 +34,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -69,7 +67,6 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
     List<Map<String,String>> listMessage = new ArrayList<>();
 
     List<Map<String,String>> listMessage1 = new ArrayList<>();
-    private static final WebClient WEB_CLIENT = WebClient.builder().baseUrl("https://aip.baidubce.com").defaultHeader(HttpHeaders.CONTENT_TYPE, org.springframework.http.MediaType.APPLICATION_STREAM_JSON_VALUE).build();
 
     @Resource
     private AiCodeHelperService aiCodeHelperService;
@@ -97,10 +94,9 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
                                        boolean stream,
                                        List<Map<String, String>> messages) {
         Map<String,Object> request = new HashMap<>();
-        request.put("user_id",userId.toString());
+        request.put("model", wenXinConfig.MODEL);
         request.put("temperature",temperature);
         request.put("top_p",topP);
-        request.put("penalty_score",penaltyScore);
         request.put("stream",stream);
         request.put("messages",messages);
         System.out.println(JSON.toJSONString(request));
@@ -149,23 +145,10 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
 
     @Override
     public String useWenxinStreamTransformToGetSteps(String question) throws IOException {
-
-        // String sid = StpUtil.getLoginIdAsString();
-        // String description = studentService.getStudentBySid(sid).getDescription();
-        //按照 CO-STAR 框架进行 Prompt 升级
-//        question =
-//                "我将会提供带有LaTeX公式的数学题目,只需要给出该题目的解题步骤。"+
-//                "参照高考题目的解题格式，分条分行，逻辑清晰。题目解题步骤的受众主要是初中以及高中的学生。"+
-//                "请针对这一群体来生成题目的解题步骤。保持解题步骤简洁而有逻辑。每一个单独的解题步骤的全部内容都分别要用[]中括号括起来表示，如："+
-//                "[1.理解题意：这是一道双向而行的问题,两辆车由相向而行变成背向而行，如果设两地之间的距离为x，那么甲车行驶的距离为（2/3x），乙车行驶的距离为(45%x)]"+
-//                "[2.列方程：（2/3）x+(45%)x-35=x，接下来是解题步骤]"+
-//                "[3.解方程：x=300，解题完成]"+
-//                "以此类推,记住不能使用诸如计算器、近似值的办法,下面是题目:"+question;
-
         return answerWithRag(question);
     }
 
-    // ARG 部分
+    // RAG 部分
     public String answerWithRag(String query) {
         List<Content> contents = contentRetriever.retrieve(dev.langchain4j.rag.query.Query.from(query));
         String context = contents.stream().map(Object::toString).collect(Collectors.joining("\n\n"));
@@ -266,18 +249,15 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
 
         //进行数据访问 返回String类型的数据
         StringBuffer answer=new StringBuffer();
-        return WEB_CLIENT.post().uri(wenXinConfig.ERNIE_Bot_4_0_URL + "?access_token=" + wenXinConfig.flushAccessToken())
+        return deepSeekWebClient().post().uri(wenXinConfig.CHAT_COMPLETIONS_PATH)
                 .bodyValue(requestJson)
                 .retrieve()
                 .bodyToFlux(String.class)
-                // 可能需要其他流处理，比如map、filter等
-                .flatMap(data -> {
-                    String result = JSON.parseObject(data).getString("result");
-                    //终结符会对后续的传输造成影响
-                    result = result.replace("\n", " ");
+                .flatMap(data -> Flux.fromIterable(extractStreamContents(data)))
+                .map(result -> result.replace("\n", " "))
+                .doOnNext(result -> {
                     System.out.println(result);
                     answer.append(result);
-                    return Mono.just(result); // 使用Mono.just将结果包装为一个发布者
                 }).doOnComplete(() -> {
                     // 当Flux完成时，输出结束消息
                     System.out.println("处理完毕，流已关闭。");
@@ -355,18 +335,15 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
 
         //进行数据访问 返回String类型的数据
         StringBuffer answer=new StringBuffer();
-        return WEB_CLIENT.post().uri(wenXinConfig.ERNIE_Bot_4_0_URL + "?access_token=" + wenXinConfig.flushAccessToken())
+        return deepSeekWebClient().post().uri(wenXinConfig.CHAT_COMPLETIONS_PATH)
                 .bodyValue(requestJson)
                 .retrieve()
                 .bodyToFlux(String.class)
-                // 可能需要其他流处理，比如map、filter等
-                .flatMap(data -> {
-                    String result = JSON.parseObject(data).getString("result");
-                    //终结符会对后续的传输造成影响
-                    result = result.replace("\n", " ");
+                .flatMap(data -> Flux.fromIterable(extractStreamContents(data)))
+                .map(result -> result.replace("\n", " "))
+                .doOnNext(result -> {
                     System.out.println(result);
                     answer.append(result);
-                    return Mono.just(result); // 使用Mono.just将结果包装为一个发布者
                 }).doOnComplete(() -> {
                     // 当Flux完成时，输出结束消息
                     System.out.println("处理完毕，流已关闭。");
@@ -592,19 +569,22 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
 
     @Override
     public JSON connectWithBigModel(String content) throws IOException {
-        String access_token = new WenxinConfig().getWenxinToken();
-        String requestMethod = "POST";
-        String url = "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions_pro?access_token="+access_token;//post请求时格式
         HashMap<String, String> msg = new HashMap<>();
         msg.put("role","user");
         msg.put("content", content);
-        ArrayList<HashMap> messages = new ArrayList<>();
+        List<Map<String, String>> messages = new ArrayList<>();
         messages.add(msg);
-        HashMap<String, Object> requestBody = new HashMap<>();
-        requestBody.put("messages", messages);
-        String outputStr = JSON.toJSONString(requestBody);
-        JSON json = HttpRequest.httpRequest(url,requestMethod,outputStr,"application/json");
-        return json;
+        String requestJson = constructRequestJson(1,0.95,0.8,1.0,false,messages);
+        Request request = new Request.Builder()
+                .url(wenXinConfig.chatCompletionsUrl())
+                .method("POST", RequestBody.create(MediaType.parse("application/json"), requestJson))
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Authorization", wenXinConfig.authorizationHeader())
+                .build();
+        try (Response response = new OkHttpClient().newCall(request).execute()) {
+            String body = response.body() == null ? "" : response.body().string();
+            return JSON.parseObject(body);
+        }
     }
 
 
@@ -632,61 +612,17 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
 
 
     public String connectWithBigModelStreamTransition(String question) throws IOException {
-        OkHttpClient client = new OkHttpClient();
-
         HashMap<String, String> user = new HashMap<>();
         user.put("role","user");
         user.put("content",question);
         messages.add(user);
         String requestJson = constructRequestJson(1,0.95,0.8,1.0,true,messages);
-        RequestBody body = RequestBody.create(MediaType.parse("application/json"), requestJson);
-        Request request = new Request.Builder()
-                .url(wenXinConfig.ERNIE_Bot_4_0_URL + "?access_token=" + wenXinConfig.flushAccessToken())
-                .method("POST", body)
-                .addHeader("Content-Type", "application/json")
-                .build();
-
-        StringBuilder answer = new StringBuilder();
-        // 发起异步请求
-        try {
-            Response response = client.newCall(request).execute();
-            // 检查响应是否成功
-            if (response.isSuccessful()) {
-                // 获取响应流
-                try (ResponseBody responseBody = response.body()) {
-                    if (responseBody != null) {
-                        InputStream inputStream = responseBody.byteStream();
-                        // 以流的方式处理响应内容，输出到控制台
-                        byte[] buffer = new byte[1024];
-                        int bytesRead;
-                        while ((bytesRead = inputStream.read(buffer)) != -1) {
-                            // 在控制台输出每个数据块
-                            // System.out.write(buffer, 0, bytesRead);
-                            //将结果汇总起来
-                            answer.append(new String(buffer, 0, bytesRead));
-                        }
-                    }
-                }
-            } else {
-                System.out.println("Unexpected code " + response);
-            }
-
-        } catch (IOException e) {
-            log.error("流式请求出错");
-            throw new RuntimeException(e);
-        }
-        //将回复的内容添加到消息中
+        String answer = executeDeepSeekStream(requestJson, null);
         HashMap<String, String> assistant = new HashMap<>();
         assistant.put("role","assistant");
-        assistant.put("content","");
-        //取出我们需要的内容,也就是result部分
-        String[] answerArray = answer.toString().split("data: ");
-        for (int i=1;i<answerArray.length;++i) {
-            answerArray[i] = answerArray[i].substring(0,answerArray[i].length() - 2);
-            assistant.put("content",assistant.get("content") + JSON.parseObject(answerArray[i]).get("result"));
-        }
+        assistant.put("content",answer);
         messages.add(assistant);
-        return assistant.get("content");
+        return answer;
     }
 
     @Override
@@ -698,67 +634,21 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
 
         System.out.println(content);
 
-        OkHttpClient client = new OkHttpClient();
-
         HashMap<String, String> user = new HashMap<>();
         user.put("role","user");
         user.put("content",content);
         messages.add(user);
         String requestJson = constructRequestJson(1,0.95,0.8,1.0,true,messages);
-        RequestBody body = RequestBody.create(MediaType.parse("application/json"), requestJson);
-        Request request = new Request.Builder()
-                .url(wenXinConfig.ERNIE_Bot_4_0_URL + "?access_token=" + wenXinConfig.flushAccessToken())
-                .method("POST", body)
-                .addHeader("Content-Type", "application/json")
-                .build();
-
-        StringBuilder answer = new StringBuilder();
-        // 发起异步请求
-        try {
-            Response response = client.newCall(request).execute();
-            // 检查响应是否成功
-            if (response.isSuccessful()) {
-                // 获取响应流
-                try (ResponseBody responseBody = response.body()) {
-                    if (responseBody != null) {
-                        InputStream inputStream = responseBody.byteStream();
-                        // 以流的方式处理响应内容，输出到控制台
-                        byte[] buffer = new byte[1024];
-                        int bytesRead;
-                        while ((bytesRead = inputStream.read(buffer)) != -1) {
-                            // 在控制台输出每个数据块
-                            System.out.write(buffer, 0, bytesRead);
-                            //将结果汇总起来
-                            answer.append(new String(buffer, 0, bytesRead));
-                        }
-                    }
-                }
-            } else {
-                System.out.println("Unexpected code " + response);
-            }
-
-        } catch (IOException e) {
-            log.error("流式请求出错");
-            throw new RuntimeException(e);
-        }
-        //将回复的内容添加到消息中
+        String answer = executeDeepSeekStream(requestJson, data -> sendDataToClient(qid, data));
         HashMap<String, String> assistant = new HashMap<>();
         assistant.put("role","assistant");
-        assistant.put("content","");
-        //取出我们需要的内容,也就是result部分
-        String[] answerArray = answer.toString().split("data: ");
-        for (int i=1;i<answerArray.length;++i) {
-            answerArray[i] = answerArray[i].substring(0,answerArray[i].length() - 2);
-            assistant.put("content",assistant.get("content") + JSON.parseObject(answerArray[i]).get("result"));
-            sendDataToClient(qid,assistant.get("content"));
-        }
+        assistant.put("content",answer);
         messages.add(assistant);
-
 
         emitter.onCompletion(() -> emitters.remove(emitter.hashCode()));
         emitter.onTimeout(() -> emitters.remove(emitter.hashCode()));
 
-        return assistant.get("content");
+        return answer;
     }
 
     @Override
@@ -774,6 +664,91 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
             }
         }
     }
+    private WebClient deepSeekWebClient() {
+        return WebClient.builder()
+                .baseUrl(wenXinConfig.BASE_URL)
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, wenXinConfig.authorizationHeader())
+                .defaultHeader(HttpHeaders.ACCEPT, org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
+                .build();
+    }
+
+    private String executeDeepSeekStream(String requestJson, java.util.function.Consumer<String> onChunk) throws IOException {
+        Request request = new Request.Builder()
+                .url(wenXinConfig.chatCompletionsUrl())
+                .method("POST", RequestBody.create(MediaType.parse("application/json"), requestJson))
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "text/event-stream")
+                .addHeader("Authorization", wenXinConfig.authorizationHeader())
+                .build();
+        StringBuilder answer = new StringBuilder();
+        try (Response response = new OkHttpClient().newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                log.error("DeepSeek请求失败: {}", response.code());
+                return "";
+            }
+            ResponseBody responseBody = response.body();
+            if (responseBody == null) {
+                return "";
+            }
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(responseBody.byteStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    for (String content : extractStreamContents(line)) {
+                        answer.append(content);
+                        if (onChunk != null) {
+                            onChunk.accept(content);
+                        }
+                    }
+                }
+            }
+        }
+        return answer.toString();
+    }
+
+    private List<String> extractStreamContents(String data) {
+        List<String> contents = new ArrayList<>();
+        if (data == null || data.isBlank()) {
+            return contents;
+        }
+        String[] lines = data.split("\\r?\\n");
+        for (String line : lines) {
+            String payload = line.trim();
+            if (payload.isEmpty()) {
+                continue;
+            }
+            if (payload.startsWith("data:")) {
+                payload = payload.substring(5).trim();
+            }
+            if (payload.isEmpty() || "[DONE]".equals(payload)) {
+                continue;
+            }
+            try {
+                com.alibaba.fastjson.JSONObject root = com.alibaba.fastjson.JSONObject.parseObject(payload);
+                com.alibaba.fastjson.JSONObject error = root.getJSONObject("error");
+                if (error != null) {
+                    log.error("DeepSeek返回错误: {}", error.getString("message"));
+                    continue;
+                }
+                com.alibaba.fastjson.JSONArray choices = root.getJSONArray("choices");
+                if (choices == null || choices.isEmpty()) {
+                    continue;
+                }
+                com.alibaba.fastjson.JSONObject delta = choices.getJSONObject(0).getJSONObject("delta");
+                if (delta == null) {
+                    continue;
+                }
+                String content = delta.getString("content");
+                if (content != null && !content.isEmpty()) {
+                    contents.add(content);
+                }
+            } catch (Exception e) {
+                log.warn("忽略无法解析的DeepSeek流式片段");
+            }
+        }
+        return contents;
+    }
+
     @Override
     public Map<String, String> parseStringToObject(String data) {
         Map<String, String> resultMap = new HashMap<>();

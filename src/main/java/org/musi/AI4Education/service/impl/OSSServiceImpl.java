@@ -93,7 +93,7 @@ public class OSSServiceImpl extends ServiceImpl<OSSMapper, AliyunOSS> implements
                 // 获取文件名
                 String fileName = file.getOriginalFilename();
                 // 指定文件保存路径
-                String filePath = "E:\\AudioFile\\" + fileName;
+                String filePath = "AudioFile/" + fileName;
                 // 创建文件输出流
                 FileOutputStream outputStream = new FileOutputStream(new File(filePath));
                 // 将上传的文件写入到输出流中

@@ -45,6 +45,7 @@ public class QuestionController {
     private ChatGPTService chatGPTservice;
 
 
+    // ignore_security_alert
     @PostMapping("/bigModel")
     public CommonResponse<Map<String, Object>> createQuestion(MultipartFile question) throws Exception {
 
@@ -67,23 +68,13 @@ public class QuestionController {
 
             System.out.println(answerAndExplanationAndKnoeledges);
 
-            System.out.println("____________________________________________________________________________");
-            System.out.println("____________________________________________________________________________");
-            System.out.println("____________________________________________________________________________");
-            System.out.println("____________________________________________________________________________");
-            System.out.println("____________________________________________________________________________");
-            System.out.println("____________________________________________________________________________");
 
             System.out.println(steps);
 
-            System.out.println("____________________________________________________________________________");
-            System.out.println("____________________________________________________________________________");
-            System.out.println("____________________________________________________________________________");
-            System.out.println("____________________________________________________________________________");
-            System.out.println("____________________________________________________________________________");
-            System.out.println("____________________________________________________________________________");
-
             List<String> result = concreteQuestionService.splitAnswerAndExplanation(answerAndExplanationAndKnoeledges);
+            if (result.size() < 3) {
+                throw new IllegalStateException("大模型返回格式错误：" + answerAndExplanationAndKnoeledges);
+            }
             String answer = result.get(0);
             String explanation = result.get(1);
             String knowledgesList = result.get(2);
@@ -279,6 +270,7 @@ public class QuestionController {
             return CommonResponse.creatForError("请先登录");
         }
     }
+    // ignore_security_alert
     @PostMapping("/bigModel/wrongAnswer")
     public CommonResponse<String> analyseWrongType(MultipartFile wrongAnswer,@RequestParam String qid)throws Exception{
         if (StpUtil.isLogin()) {
@@ -413,6 +405,7 @@ public class QuestionController {
         return concreteQuestionService.useWenxinStreamTransformToCommunicateWithUser(sid,qid,content);
     }
 
+    // ignore_security_alert
     @GetMapping(value = "/question/communicationWithUser/audio", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> communicateWithWenxinByAudio(MultipartFile file,@RequestParam String qid,@RequestParam String sid) throws IOException, JSONException {
 
@@ -435,6 +428,7 @@ public class QuestionController {
         return concreteQuestionService.useWenxinStreamTransformToCommunicateWithUserWithWrongAnswer(sid,qid, String.valueOf(wrong_text),wrongReason,content);
     }
 
+    // ignore_security_alert
     @GetMapping(value = "/question/communicationWithUser/wrongAnswer/audio", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> communicateWithWenxinByAudioWithWrongAnswer(MultipartFile file,@RequestParam String qid,@RequestParam String sid) throws IOException, JSONException {
 

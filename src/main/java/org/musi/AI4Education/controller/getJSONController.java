@@ -19,14 +19,14 @@ import java.util.UUID;
 @RestController
 public class getJSONController {
     //上传文件存储路径
-    String uploadDirectory = "D:\\uploadByFront_language\\";
+    String uploadDirectory = "uploadByFront_language/";
     @PostMapping("/upload/{userid}/{systemname}")
     public CommonResponse<String> upload(@PathVariable("userid") String userid , @PathVariable("systemname") String systemname,
                                          @RequestParam("entityFile") MultipartFile entityFile, @RequestParam("relationFile") MultipartFile relationFile){
         //设置调用函数的路径
         System.out.println(userid);
 
-        String pythonFunPath = "\"G:\\generateJSON\\main.py\"";
+        String pythonFunPath = "generateJSON/main.py";
         //获取两个文件的路径
         String entityFilePath = uploadFile(entityFile);
 
@@ -66,7 +66,7 @@ public class getJSONController {
         String answer = "";
         try {
             List<String> command = new ArrayList<>();
-            command.add("G:\\generateJSON\\venv\\Scripts\\python.exe");
+            command.add("generateJSON/venv/Scripts/python.exe");
             command.add(pythonFunPath);
             command.addAll(Arrays.asList(args));
 
