@@ -2,15 +2,11 @@ package org.musi.AI4Education.config;
 
 
 import javax.servlet.*;
-import javax.servlet.annotation.WebFilter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.springframework.context.annotation.Configuration;
 
 import java.io.IOException;
 
-@Configuration
-@WebFilter(filterName = "CORSFilter")
 public class CORSFilter implements Filter {
     //跨域访问
     @Override

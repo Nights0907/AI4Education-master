@@ -1,3 +1,4 @@
+import os
 import sys
 
 import websocket
@@ -155,8 +156,8 @@ if __name__ == "__main__":
     path = sys.argv[1]
     recognized_text = ""
     time1 = datetime.now()
-    wsParam = Ws_Param(APPID='ad6377ff', APISecret='ZDUzM2Q5MDZhNzA4MWI0NzRhODY4MTI5',
-                       APIKey='8a73cf4bf419cb775c500e800c82bb34',
+    wsParam = Ws_Param(APPID=os.environ["XFYUN_APP_ID"], APISecret=os.environ["XFYUN_API_SECRET"],
+                       APIKey=os.environ["XFYUN_API_KEY"],
                        AudioFile=path)
     # websocket.enableTrace(False)
     wsUrl = wsParam.create_url()

@@ -2,13 +2,14 @@ package org.musi.AI4Education.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
 import org.musi.AI4Education.common.CommonResponse;
+import org.musi.AI4Education.domain.LoginRequest;
+import org.musi.AI4Education.domain.LoginResponse;
 import org.musi.AI4Education.domain.Student;
+import org.musi.AI4Education.domain.StudentDTO;
 import org.musi.AI4Education.service.StudentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.List;
 
 @RestController
 @RequestMapping("/student")
@@ -16,26 +17,26 @@ public class StudentController {
     @Autowired
     private StudentService studentService;
 
+    @PostMapping("/login")
+    public CommonResponse<LoginResponse> login(@RequestBody LoginRequest request) {
+        return loginWithCredentials(request.getUsername(), request.getPassword());
+    }
+
+    @Deprecated
     @GetMapping("/login")
-    public CommonResponse<List<String>> login(@RequestParam String username, @RequestParam String password) {
-        // 验证是否登录成功并返回token
-        if (studentService.validation(username, password)) {
-            //sa-token存储登录信息
-            String sid = studentService.getSidByUsername(username);
-            StpUtil.login(sid);
-            String token = StpUtil.getTokenValue();
+    public CommonResponse<LoginResponse> loginLegacy(@RequestParam String username, @RequestParam String password) {
+        return loginWithCredentials(username, password);
+    }
 
-            ArrayList<String> resultList = new ArrayList<>();
-            resultList.add(sid);
-            resultList.add(token);
-
-            Student student = studentService.getStudentBySid(sid);
-            //更新学生登录状态，设置为已登录
-            studentService.updateStudentState(sid,1);
-            return CommonResponse.creatForSuccess(resultList);
-        } else {
+    private CommonResponse<LoginResponse> loginWithCredentials(String username, String password) {
+        Student student = studentService.authenticate(username, password);
+        if (student == null) {
             return CommonResponse.creatForError("用户名或密码错误");
         }
+        StpUtil.login(student.getSid());
+        String token = StpUtil.getTokenValue();
+        studentService.updateStudentState(student.getSid(),1);
+        return CommonResponse.creatForSuccess(new LoginResponse(student.getSid(), token));
     }
 
     @PostMapping("/register")
@@ -58,24 +59,24 @@ public class StudentController {
     }
 
     @GetMapping("/info")
-    public CommonResponse<Student> getStudentInfo() {
+    public CommonResponse<StudentDTO> getStudentInfo() {
         if (StpUtil.isLogin()) {
             String sid = StpUtil.getLoginIdAsString();
             Student student = studentService.getStudentBySid(sid);
-            return CommonResponse.creatForSuccess(student);
+            return CommonResponse.creatForSuccess(StudentDTO.from(student));
         } else {
             return CommonResponse.creatForError("请先登录！");
         }
     }
 
     @PutMapping("/info")
-    public CommonResponse<Student> UpdateStudentInfo(@RequestBody Student student) {
+    public CommonResponse<StudentDTO> UpdateStudentInfo(@RequestBody Student student) {
         if (StpUtil.isLogin()) {
             String sid = StpUtil.getLoginIdAsString();
             student.setSid(sid);
             student.setIsLogin(1);
             if (studentService.updateStudentInfo(student)) {
-                return CommonResponse.creatForSuccess(student);
+                return CommonResponse.creatForSuccess(StudentDTO.from(student));
             } else {
                 return CommonResponse.creatForError("fail");
             }

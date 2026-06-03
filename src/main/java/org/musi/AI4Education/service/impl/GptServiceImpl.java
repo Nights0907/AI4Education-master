@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.musi.AI4Education.domain.*;
 import org.musi.AI4Education.service.BasicQuestionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -46,16 +47,24 @@ public class GptServiceImpl {
     private BasicQuestionService basicQuestionService;
     private Map<String, ChatSession> sessions = new HashMap<>(); // Store sessions using user IDs
 
-    //本地测试版本
-    private String QWEN_KEY = "sk-eb3b86139e574719aa5aed8dc1348cc7";
+    @Value("${qwen.api-key:sk-8da5d92cd1bd48839addaec3e03f8260}")
+    private String qwenApiKey;
+
+    @Value("${qwen.base-url:https://dashscope.aliyuncs.com/compatible-mode/v1}")
+    private String qwenBaseUrl;
+
+    @Value("${qwen.chat-completions-path:/chat/completions}")
+    private String qwenChatCompletionsPath;
+
+    @Value("${qwen.model:qwen-plus}")
+    private String qwenModel;
 
     //服务器测试版本
     @PostConstruct
     public void postConstruct() {
-        this.webClient = WebClient.builder()//创建webflux的client
-                //.baseUrl("https://gateway.ai.cloudflare.com/v1/323f46a86f2c41a6c889c57cccac62fb/musi/openai")//填写对应的api地址
-                .baseUrl("https://dashscope.aliyuncs.com/compatible-mode/v1")//填写对应的api地址
-                .defaultHeader("Content-Type", "application/json")//设置默认请求类型
+        this.webClient = WebClient.builder()
+                .baseUrl(qwenBaseUrl)
+                .defaultHeader("Content-Type", "application/json")
                 .build();
     }
 
@@ -65,7 +74,7 @@ public class GptServiceImpl {
         String qidForChatHistory = qid + "003";
         //构建请求对象
         ChatRequestDTO chatRequestDTO = new ChatRequestDTO();
-        chatRequestDTO.setModel("qwen-plus");//设置模型
+        chatRequestDTO.setModel(qwenModel);//设置模型
         chatRequestDTO.setStream(true);//设置流式返回
 
         // 直接尝试获取会话对象
@@ -150,11 +159,9 @@ public class GptServiceImpl {
         //构建请求json
         String paramJson = JSONUtil.toJsonStr(chatRequestDTO);
 
-        System.out.println(QWEN_KEY);
-
         return this.webClient.post()
-                .uri("/chat/completions")//请求uri
-                .header("Authorization", QWEN_KEY)//设置成自己的key，获得key的方式可以在下文查看
+                .uri(qwenChatCompletionsPath)
+                .header("Authorization", "Bearer " + qwenApiKey)
                 .header(HttpHeaders.ACCEPT, MediaType.TEXT_EVENT_STREAM_VALUE)//设置流式响应
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(BodyInserters.fromValue(paramJson))
@@ -271,7 +278,7 @@ public class GptServiceImpl {
         String qidForChatHistory = qid + "004";
         //构建请求对象
         ChatRequestDTO chatRequestDTO = new ChatRequestDTO();
-        chatRequestDTO.setModel("qwen-plus");//设置模型
+        chatRequestDTO.setModel(qwenModel);//设置模型
         chatRequestDTO.setStream(true);//设置流式返回
 
         // 直接尝试获取会话对象
@@ -358,8 +365,8 @@ public class GptServiceImpl {
         String paramJson = JSONUtil.toJsonStr(chatRequestDTO);;
 
         return this.webClient.post()
-                .uri("/chat/completions")//请求uri
-                .header("Authorization", QWEN_KEY)//设置成自己的key，获得key的方式可以在下文查看
+                .uri(qwenChatCompletionsPath)
+                .header("Authorization", "Bearer " + qwenApiKey)
                 .header(HttpHeaders.ACCEPT, MediaType.TEXT_EVENT_STREAM_VALUE)//设置流式响应
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(BodyInserters.fromValue(paramJson))
@@ -476,7 +483,7 @@ public class GptServiceImpl {
         String qidForChatHistory = qid + "005";
         //构建请求对象
         ChatRequestDTO chatRequestDTO = new ChatRequestDTO();
-        chatRequestDTO.setModel("qwen-plus");//设置模型
+        chatRequestDTO.setModel(qwenModel);//设置模型
         chatRequestDTO.setStream(true);//设置流式返回
 
         // 直接尝试获取会话对象
@@ -558,8 +565,8 @@ public class GptServiceImpl {
         String paramJson = JSONUtil.toJsonStr(chatRequestDTO);
 
         return this.webClient.post()
-                .uri("/chat/completions")//请求uri
-                .header("Authorization", QWEN_KEY)//设置成自己的key，获得key的方式可以在下文查看
+                .uri(qwenChatCompletionsPath)
+                .header("Authorization", "Bearer " + qwenApiKey)
                 .header(HttpHeaders.ACCEPT, MediaType.TEXT_EVENT_STREAM_VALUE)//设置流式响应
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(BodyInserters.fromValue(paramJson))

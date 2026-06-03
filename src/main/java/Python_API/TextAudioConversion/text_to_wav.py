@@ -1,4 +1,5 @@
 import asyncio
+import os
 import sys
 
 import websockets
@@ -15,9 +16,9 @@ from volcengine.base.Service import Service
 
 async def tts_ws(input_text, out_path):
     # 配置火山引擎API信息
-    ACCESS_KEY = "AKLTZmY0ODI2NDljOWI1NDU5ZGJjMDYzZDEyMzU3MjY3ZTU"
-    SECRET_KEY = "T0RZNE1qUmxZbUV5WlROaE5HUm1abUl3TmpFNVpUaGpaVFJtTWprd1lqUQ=="
-    APPKEY = "AKXPVjXSJj"
+    ACCESS_KEY = os.environ["VOLCENGINE_ACCESS_KEY"]
+    SECRET_KEY = os.environ["VOLCENGINE_SECRET_KEY"]
+    APPKEY = os.environ["VOLCENGINE_APP_KEY"]
     AUTH_VERSION = 'volc-auth-v1'
 
     # https://github.com/volcengine/volc-sdk-python
@@ -78,9 +79,9 @@ async def tts_ws(input_text, out_path):
     resp = sami_service.common_json_handler("GetToken", req)
 
     # 配置火山引擎API信息
-    ACCESS_KEY = "AKLTZmY0ODI2NDljOWI1NDU5ZGJjMDYzZDEyMzU3MjY3ZTU"
-    SECRET_KEY = "T0RZNE1qUmxZbUV5WlROaE5HUm1abUl3TmpFNVpUaGpaVFJtTWprd1lqUQ=="
-    APPKEY = "AKXPVjXSJj"
+    ACCESS_KEY = os.environ["VOLCENGINE_ACCESS_KEY"]
+    SECRET_KEY = os.environ["VOLCENGINE_SECRET_KEY"]
+    APPKEY = os.environ["VOLCENGINE_APP_KEY"]
     TOKEN = resp["token"]
     # WebSocket API URL
     API_URL = "ws://sami.bytedance.com/api/v1/ws"

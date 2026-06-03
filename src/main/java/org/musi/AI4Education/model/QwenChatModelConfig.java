@@ -12,6 +12,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import javax.annotation.Resource;
 
 import lombok.Data;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -21,9 +22,17 @@ import java.util.List;
 @Data
 public class QwenChatModelConfig {
 
-    private String modelName = "qwen-plus";
+    @Value("${qwen.model:qwen-plus}")
+    private String modelName;
 
-    private String apiKey = "sk-eb3b86139e574719aa5aed8dc1348cc7";
+    @Value("${qwen.streaming-model:qwen-max}")
+    private String streamingModelName;
+
+    @Value("${qwen.embedding-model:text-embedding-v1}")
+    private String embeddingModelName;
+
+    @Value("${qwen.api-key:}")
+    private String apiKey;
 
     @Resource
     private ChatModelListener chatModelListener;
@@ -46,7 +55,7 @@ public class QwenChatModelConfig {
     public StreamingChatModel streamingChatModel() {
         return QwenStreamingChatModel.builder()
                 .apiKey(apiKey)
-                .modelName("qwen-max")
+                .modelName(streamingModelName)
                 .build();
     }
 
@@ -54,7 +63,7 @@ public class QwenChatModelConfig {
     public EmbeddingModel qwenEmbeddingModel() {
         return QwenEmbeddingModel.builder()
                 .apiKey(apiKey)
-                .modelName("text-embedding-v1")
+                .modelName(embeddingModelName)
                 .build();
     }
 

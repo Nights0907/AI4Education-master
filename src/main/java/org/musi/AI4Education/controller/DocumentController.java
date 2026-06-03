@@ -3,7 +3,8 @@ package org.musi.AI4Education.controller;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
 import org.musi.AI4Education.common.CommonResponse;
-import org.musi.AI4Education.service.DocumentVectorService;
+import org.musi.AI4Education.service.impl.DocumentVectorService;
+import org.musi.AI4Education.service.impl.MilvusAdminService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,7 +28,7 @@ public class DocumentController {
     private DocumentVectorService documentVectorService;
 
     @Autowired
-    private org.musi.AI4Education.service.MilvusAdminService milvusAdminService;
+    private MilvusAdminService milvusAdminService;
     @org.springframework.beans.factory.annotation.Value("${milvus.collection:default}")
     private String collectionName;
     @org.springframework.beans.factory.annotation.Value("${milvus.dimension:1536}")

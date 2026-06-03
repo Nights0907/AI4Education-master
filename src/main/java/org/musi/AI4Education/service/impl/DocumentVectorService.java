@@ -1,4 +1,4 @@
-package org.musi.AI4Education.service;
+package org.musi.AI4Education.service.impl;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.loader.ClassPathDocumentLoader;

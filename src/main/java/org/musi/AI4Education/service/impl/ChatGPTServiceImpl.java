@@ -11,6 +11,7 @@ import org.musi.AI4Education.domain.*;
 import org.musi.AI4Education.mapper.ChatHistoryMapper;
 import org.musi.AI4Education.service.BasicQuestionService;
 import org.musi.AI4Education.service.ChatGPTService;
+import org.musi.AI4Education.utils.PythonProcessRunner;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -18,9 +19,8 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.util.*;
 
 
@@ -33,6 +33,9 @@ public class ChatGPTServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatHisto
 
     @Autowired
     private BasicQuestionService basicQuestionService;
+
+    @Autowired
+    private PythonProcessRunner pythonProcessRunner;
 
     private Map<String, ChatSession> sessions = new HashMap<>(); // Store sessions using user IDs
 
@@ -74,56 +77,31 @@ public class ChatGPTServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatHisto
 
     @Override
     public String getTextByPcm(String filePath) {
-        String answer = "";
         try {
-            ProcessBuilder pb;
-                pb = new ProcessBuilder("python", "src/main/java/Python_API/TextAudioConversion/pcm_to_text.py");
-            //pb = new ProcessBuilder("python", "src/main/java/Python_API/TextAudioConversion/pcm_to_text.py", filePath);
-            Process p = pb.start();
-            BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream(),"gb2312"));
-            String line;
-            while ((line = in.readLine()) != null) {
-                answer += line;
-            }
-            in.close();
-            p.waitFor();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            return pythonProcessRunner.runScript(
+                    "src/main/java/Python_API/TextAudioConversion/pcm_to_text.py",
+                    Charset.forName("GB2312"),
+                    filePath
+            ).trim();
+        } catch (IOException | InterruptedException e) {
+            throw new IllegalStateException("语音识别失败", e);
         }
-        return answer;
     }
 
     @Override
     public Boolean getWavByText(String text) {
-        String answer = "";
+        String inputText = text == null ? "你好, 欢迎使用文本转语音服务，接下来我将为你讲解数学题" : text;
+        wavPath = "./output-" + UUID.randomUUID() + ".wav";
         try {
-            ProcessBuilder pb;
-            if (text == null) {
-                pb = new ProcessBuilder("python", "src/main/java/Python_API/TextAudioConversion/text_to_wav.py");
-                //pb = new ProcessBuilder("python", "src/main/java/Python_API/TextAudioConversion/text_to_wav.py", "你好, 欢迎使用文本转语音服务，接下来我将为你讲解数学题", wavPath);
-            }else {
-                pb = new ProcessBuilder("python", "src/main/java/Python_API/TextAudioConversion/text_to_wav.py");
-               // pb = new ProcessBuilder("python", "src/main/java/Python_API/TextAudioConversion/text_to_wav.py", text, wavPath);
-            }
-            Process p = pb.start();
-            BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream(),"gb2312"));
-            String line;
-            while ((line = in.readLine()) != null) {
-                answer += line;
-            }
-            in.close();
-            p.waitFor();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+            String answer = pythonProcessRunner.runScript(
+                    "src/main/java/Python_API/TextAudioConversion/text_to_wav.py",
+                    Charset.forName("GB2312"),
+                    inputText,
+                    wavPath
+            );
+            return answer.contains("Task finished successfully.");
+        } catch (IOException | InterruptedException e) {
+            throw new IllegalStateException("文本转语音失败", e);
         }
-
-        if(answer.equals("Received binary data.Task finished successfully.")){
-            return true;
-        }
-        return false;
     }
 }

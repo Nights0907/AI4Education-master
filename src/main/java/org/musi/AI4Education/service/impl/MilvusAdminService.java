@@ -1,4 +1,4 @@
-package org.musi.AI4Education.service;
+package org.musi.AI4Education.service.impl;
 
 import io.milvus.client.MilvusClient;
 import io.milvus.param.R;

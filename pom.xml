@@ -44,7 +44,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
-            <!--			<scope>test</scope>-->
+            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -86,6 +86,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -95,21 +96,8 @@
         </dependency>
 
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.11.4</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-            <version>2.11.4</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-annotations</artifactId>
-            <version>2.11.4</version>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
         </dependency>
 
         <dependency>
@@ -128,12 +116,6 @@
             <groupId>com.alipay.sdk</groupId>
             <artifactId>alipay-easysdk</artifactId>
             <version>2.2.0</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.alipay.sdk</groupId>
-            <artifactId>alipay-sdk-java</artifactId>
-            <version>3.0.0</version>
         </dependency>
 
         <dependency>
@@ -329,7 +311,7 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>milvus</artifactId>
             <version>1.19.7</version>
-            <!-- <scope>test</scope> -->
+            <scope>test</scope>
         </dependency>
 
     </dependencies>
@@ -354,7 +336,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>3.0.4</version>
                 <configuration>
                     <excludes>
                         <exclude>

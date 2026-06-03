@@ -4,12 +4,8 @@ import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClient;
 import com.aliyun.oss.model.OSSObject;
 import org.musi.AI4Education.service.OSSService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.stereotype.Controller;
-import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
@@ -24,17 +20,37 @@ import java.util.Random;
 @Configuration
 public class OCRConfig {
 
+    private static String appId;
+    private static String appSecret;
+    private static String apiUrl;
+
+    @Value("${simpletex.app-id:}")
+    public void setAppId(String appId) {
+        OCRConfig.appId = appId;
+    }
+
+    @Value("${simpletex.app-secret:}")
+    public void setAppSecret(String appSecret) {
+        OCRConfig.appSecret = appSecret;
+    }
+
+    @Value("${simpletex.latex-ocr-url:https://server.simpletex.cn/api/latex_ocr}")
+    public void setApiUrl(String apiUrl) {
+        OCRConfig.apiUrl = apiUrl;
+    }
+
     public static String latexOcr(MultipartFile file) throws IOException {
         // 生成随机字符串
         String random_str = randomString();
         // 获取当前时间戳
         String timestamp = Long.toString(System.currentTimeMillis() / 1000);
 
-        // 设置APP ID和APP Secret
-        String app_id = "cUdEtHFuLod05YeW8MonUG8z";
-        String app_secret = "KWByXuMngNJjz1UEiFDYAS8KnEIv9TPQ";
-        // API端点
-        String url = "https://server.simpletex.cn/api/latex_ocr";
+        if (appId == null || appId.isBlank() || appSecret == null || appSecret.isBlank()) {
+            throw new IllegalStateException("SimpleTex OCR credentials are not configured");
+        }
+        String app_id = appId;
+        String app_secret = appSecret;
+        String url = apiUrl;
 
         // 准备请求文件和数据
         String boundary = randomString();

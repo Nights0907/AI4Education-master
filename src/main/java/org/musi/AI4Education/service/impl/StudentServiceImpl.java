@@ -7,14 +7,17 @@ import org.musi.AI4Education.domain.Student;
 import org.musi.AI4Education.mapper.StudentMapper;
 import org.musi.AI4Education.service.StudentService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
 
 @Service
 public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> implements StudentService {
 
     @Autowired
     private StudentMapper studentMapper; // 注入StudentMapper接口
+
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override
     public Student getStudentByUsername(String username) {
@@ -52,16 +55,28 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
 
     @Override
     public boolean validation(String username, String password) {
-        //使用studentMapper获取用户信息
-        QueryWrapper<Student> wrapper = new QueryWrapper<>();
-        wrapper.eq("username", username);
-        wrapper.eq("password", password);
-        Student student = studentMapper.selectOne(wrapper);
-        if (student != null) {
-            return true;
-        } else {
-            return false;
+        return authenticate(username, password) != null;
+    }
+
+    @Override
+    public Student authenticate(String username, String password) {
+        Student student = getStudentByUsername(username);
+        if (student == null || password == null) {
+            return null;
         }
+        String storedPassword = student.getPassword();
+        if (storedPassword == null) {
+            return null;
+        }
+        if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$") || storedPassword.startsWith("$2y$")) {
+            return passwordEncoder.matches(password, storedPassword) ? student : null;
+        }
+        if (storedPassword.equals(password)) {
+            student.setPassword(passwordEncoder.encode(password));
+            studentMapper.updateById(student);
+            return student;
+        }
+        return null;
     }
 
     @Override
@@ -80,7 +95,7 @@ public class StudentServiceImpl extends ServiceImpl<StudentMapper, Student> impl
 
             //学生基本信息
             student2.setUsername(student.getUsername());
-            student2.setPassword(student.getPassword());
+            student2.setPassword(passwordEncoder.encode(student.getPassword()));
             student2.setPhone(student.getPhone());
             student2.setEmail(student.getEmail());
             student2.setGender(student.getGender());
