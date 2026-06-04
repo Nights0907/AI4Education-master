@@ -1,0 +1,8 @@
+target/
+*.log
+.idea
+.mvn
+.claude
+.vscode/
+
+src/main/resources/application.properties
