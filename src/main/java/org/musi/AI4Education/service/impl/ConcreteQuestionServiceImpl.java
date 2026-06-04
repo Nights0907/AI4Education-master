@@ -10,7 +10,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
-import dev.langchain4j.service.SystemMessage;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.bson.Document;
@@ -20,9 +19,11 @@ import org.musi.AI4Education.config.Wen_XinConfig;
 import org.musi.AI4Education.domain.*;
 import org.musi.AI4Education.mapper.ConcreteQuestionMapper;
 import org.musi.AI4Education.model.wenxin.WenxinChatModel;
+import org.musi.AI4Education.prompt.PromptKeys;
 import org.musi.AI4Education.service.AiCodeHelperService;
 import org.musi.AI4Education.service.BasicQuestionService;
 import org.musi.AI4Education.service.ConcreteQuestionService;
+import org.musi.AI4Education.service.PromptTemplateService;
 import org.musi.AI4Education.service.StudentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -59,6 +60,8 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
 
     @Resource
     private Wen_XinConfig wenXinConfig;
+    @Resource
+    private PromptTemplateService promptTemplateService;
     //历史对话，需要按照user,assistant
     List<Map<String,String>> messages = new ArrayList<>();
 
@@ -105,37 +108,18 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
 
     @Override
     public String useWenxinStreamTransformToGetAnswerAndExplanationAndKnowledge(String question) throws IOException {
-        String ststemMessage = "我将会传输带有latex公式的数学题目，只需要给出(1)题目的标准答案(2)题目的简略解析(3)题目考察的与数学相关的知识点，将答案、简略解析以及知识点分别用[]括起来，例如“[答案：2],[解析：1+1=2],[{加法原理},{乘法原理}]”,记住不能使用诸如计算器、近似值的办法，下面是题目：";
-        return connectWithBigModelStreamTransition(ststemMessage + question);
+        String prompt = promptTemplateService.renderPrompt(PromptKeys.MATH_ANSWER_EXPLANATION_KNOWLEDGE, Map.of(
+                "question", String.valueOf(question)
+        ));
+        return connectWithBigModelStreamTransition(prompt);
     }
 
     @Override
     public Map<String, String> useWenxinStreamTransformToAnalyseAbilityByKnowledge(List<String> knowledge) throws IOException {
 
-        String question =
-                "<content>"+
-                "我将会以 List<String> 的方式传输知识点列表，请帮我分析每个知识点所考察的核心素养。"+
-                "核心素养能力包括以下六个方面：数学抽象、数学建模、数据分析、直观想象、逻辑推理、数学运算。下面是六个能力的具体解释："+
-                "</content>"+
-                "<explanation>"+
-                "数学抽象：这是指将具体问题或概念抽象成数学符号、结构或模型的能力。通过数学抽象，我们能够将复杂的现实世界问题简化成数学问题，从而更容易进行分析和解决。"+
-                "数学建模：数学建模是将实际问题转化为数学模型的过程。这涉及到选择适当的数学工具和技术，以及对问题进行合理的简化和假设，以便于用数学语言描述和分析。"+
-                "数据分析：数据分析是指利用数学、统计学和计算机科学等方法对数据进行处理、解释和推断的过程。这包括数据清洗、探索性数据分析、统计建模、机器学习等技术。"+
-                "直观想象：这是指通过直觉和想象力理解和解决问题的能力。在数学中，直观想象可以帮助我们形成几何图像、推断模式或者预测结果，从而指导数学推理和解决问题的过程。"+
-                "逻辑推理：逻辑推理是指根据已知信息和逻辑规则，推导出新的结论或解决问题的过程。在数学中，逻辑推理是证明定理、解决问题和构建数学理论的基本方法之一。"+
-                "数学运算：数学运算是指进行数值计算、代数运算、微积分等基本数学操作的能力。这包括加减乘除、求导、积分等操作，是进行数学分析和解决实际问题的基础。"+
-                "</explanation>"+
-                "<goal>"+
-                "请根据每一个知识点，分析其考察的核心素养能力，我会给你一个例子. \n"+
-                "</goal>"+
-                "<input>"+
-                "{函数单调性运算,立体几何}"+
-                "</input>"+
-                "<output>"+
-                "[函数单调性运算:{数学分析,逻辑推理}],"+
-                "[立体几何:{直观想象,数学建模}]"+
-                "</output>"+
-                "下面是知识点列表"+knowledge+"请只返回如<output>那样的知识点与能力的映射关系,不用带上<output>";
+        String question = promptTemplateService.renderPrompt(PromptKeys.MATH_ABILITY_BY_KNOWLEDGE, Map.of(
+                "knowledge", String.valueOf(knowledge)
+        ));
 
         String result = connectWithBigModelStreamTransition(question);
         Map<String, String> resultMap = parseStringToObject(result);
@@ -154,23 +138,8 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
         String context = contents.stream().map(Object::toString).collect(Collectors.joining("\n\n"));
 
         List<ChatMessage> messages = new ArrayList<>();
-        messages.add(dev.langchain4j.data.message.SystemMessage.from("你是一个乐于助人的中文助理。请基于提供的检索上下文回答问题，若上下文无关则直说不知道。"));
-
-        String formatted = "你是一名擅长中学数学讲解的助教。现在请严格按照以下规则，给出题目的解题步骤：\\n"
-                + "1) 仅输出步骤列表，不要输出任何额外说明、前后缀或空行。\\n"
-                + "2) 每一个独立步骤必须完整地放在一对中括号[]内，且每个[]内部以阿拉伯数字开头编号，如：[1. ...]、[2. ...]。\\n"
-                + "3) 所有步骤都要覆盖从审题到列式、运算、化简、结论或单位等关键环节，保证逻辑清晰、面向初高中生、语言简洁。\\n"
-                + "4) 题目中可能包含 LaTeX 公式，请原样保留并正确使用，不要破坏公式格式。\\n"
-                + "5) 严禁使用计算器或近似值，严禁跳步或省略关键推导，若有条件或结论需要说明，请在对应步骤的[]内简要说明。\\n"
-                + "6) 除了[]步骤外，禁止出现任何其他文本、标点或空白行（包括“解：”“答：”“总结”等）。\\n"
-                + "示例格式（仅示意，非该题答案）：\\n"
-                + "[1. 审题与已知：……]\\n"
-                + "[2. 设未知量并转化：……]\\n"
-                + "[3. 列方程/函数/几何关系（保留 LaTeX）：……]\\n"
-                + "[4. 变形与求解（逐步推导、保留 LaTeX）：……]\\n"
-                + "[5. 结论与检验：……]\\n"
-                + "现在请仅输出满足以上规则的步骤列表。";;
-        messages.add(dev.langchain4j.data.message.SystemMessage.from(formatted));
+        messages.add(dev.langchain4j.data.message.SystemMessage.from(promptTemplateService.getPrompt(PromptKeys.MATH_RAG_SYSTEM)));
+        messages.add(dev.langchain4j.data.message.SystemMessage.from(promptTemplateService.getPrompt(PromptKeys.MATH_RAG_STEPS)));
 
         messages.add(UserMessage.from("上下文：\n" + context + "\n\n问题：" + query));
 
@@ -183,27 +152,11 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
         String sid = StpUtil.getLoginIdAsString();
         String description = studentService.getStudentBySid(sid).getDescription();
 
-        String require =
-                "我需要你分析学生在解决数学问题时生成错误解题步骤的错误类型,该学生情况为："+description+"，请结合学生的个人情况，并结合学生的错误答案，以教师的口吻，重复一下学生情况，并设计一个教学方案" +
-                        "你需要提在下列范围内，寻找一个（只有一个）最为接近的基本类型与一个（只有一个）细分类型\n" +
-
-                        "基本类型列表为：" +
-                        "{计算错误、概念错误、读题错误、解题错误}\n" +
-
-                        "对应的细分类型为："+
-                        "[{\"计算错误\":\"{代数,正负值错误,单位转换,值错误}\"},"+
-                        " {\"概念错误\":\"{理解错误,抄写题目信息疏忽}\"},"+
-                        " {\"读题错误\":\"{方程设立错误,错误格式,概念遗忘}\"},"+
-                        " {\"解题错误\":\"{解题步骤不完整,结论错误,猜答案}\"}]"+
-
-                        "如果没有与之匹配的的基本类型与细分类型，请新建一个基本类型与细分类型！\n"+
-
-                        "下面是原始问题:"+question+
-                        "下面是学生提供的错误解题步骤:"+content+
-                        "请分析学生所犯的错误类型，并且只返回一个基本类型 与 一个细分类型,与一份教学方案，不要过多解释！\n" +
-                        "基本类型：用[]括起来 "+
-                        "细分类型：用[]括起来 "+
-                        "教学方案：用[]括起来 ";
+        String require = promptTemplateService.renderPrompt(PromptKeys.ANALYSIS_WRONG_TYPE_TEACHING_PLAN, Map.of(
+                "description", String.valueOf(description),
+                "question", String.valueOf(question),
+                "content", String.valueOf(content)
+        ));
 
 
         String stringWithAnswer = connectWithBigModelStreamTransition(require);
@@ -235,8 +188,10 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
             session = new ChatSession(); // 创建新的会话对象
             sessions.put(qidForChatHistory, session); // 将新的会话对象放入 sessions 中
             // 在这里可以执行第一次创建会话的相关逻辑
-            String front = "我将提供一个含有LaTex公式的数学题目，请根据这个题目回答下列问题，题目为：";
-            content =  front + question+" 请回答我的提问："+content;
+            content = promptTemplateService.renderPrompt(PromptKeys.CHAT_QUESTION_FIRST_TURN, Map.of(
+                    "question", String.valueOf(question),
+                    "content", String.valueOf(content)
+            ));
         }
 
 
@@ -322,8 +277,12 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
             session = new ChatSession(); // 创建新的会话对象
             sessions.put(qidForChatHistory, session); // 将新的会话对象放入 sessions 中
             // 在这里可以执行第一次创建会话的相关逻辑
-            String front = "我将提供一个含有LaTex公式的数学题目，并提供我的有错误的解题思路，以及该我犯错误的原因.\n";
-            content =  front+"题目为："+question+"  我的错解为"+wrongText+"  我的错因为："+wrongReason+ " 请结合我犯错误的原因，以教师的口吻分析我犯错的地方在哪";
+            content = promptTemplateService.renderPrompt(PromptKeys.CHAT_WRONG_ANSWER_FIRST_TURN, Map.of(
+                    "question", String.valueOf(question),
+                    "wrongText", String.valueOf(wrongText),
+                    "wrongReason", String.valueOf(wrongReason),
+                    "content", String.valueOf(content)
+            ));
         }
 
         //设置请求体 这一部分可以放到Service
@@ -571,7 +530,7 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
     public JSON connectWithBigModel(String content) throws IOException {
         HashMap<String, String> msg = new HashMap<>();
         msg.put("role","user");
-        msg.put("content", content);
+        msg.put("content", String.valueOf(content));
         List<Map<String, String>> messages = new ArrayList<>();
         messages.add(msg);
         String requestJson = constructRequestJson(1,0.95,0.8,1.0,false,messages);
@@ -589,7 +548,6 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
 
 
     @Override
-    @SystemMessage(fromResource = "system_prompt.txt")
     public String chatWithRAG(String question) throws IOException {
 
         HashMap<String, String> user = new HashMap<>();

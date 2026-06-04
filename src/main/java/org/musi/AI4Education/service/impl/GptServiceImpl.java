@@ -8,7 +8,9 @@ import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.musi.AI4Education.domain.*;
+import org.musi.AI4Education.prompt.PromptKeys;
 import org.musi.AI4Education.service.BasicQuestionService;
+import org.musi.AI4Education.service.PromptTemplateService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -24,9 +26,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import javax.annotation.PostConstruct;
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -45,6 +44,8 @@ public class GptServiceImpl {
     private MongoTemplate mongoTemplate;
     @Autowired
     private BasicQuestionService basicQuestionService;
+    @Autowired
+    private PromptTemplateService promptTemplateService;
     private Map<String, ChatSession> sessions = new HashMap<>(); // Store sessions using user IDs
 
     @Value("${qwen.api-key:sk-8da5d92cd1bd48839addaec3e03f8260}")
@@ -96,30 +97,11 @@ public class GptServiceImpl {
             ConcreteQuestion concreteQuestion = mongoTemplate.findOne(query, ConcreteQuestion.class);
             String question_analysis = concreteQuestion.getQuestionAnalysis();
 
-            String front = "这是我要向你询问的题目：" + question_text + "这道题的正确解法是：" + question_analysis+" 我的解题方法是："+wrongText;
-            String result = "";
-
-            String filePath = "src/main/java/Python_API/Inspiration/prompt.txt";
-
-            try {
-                // 创建FileReader对象
-                FileReader fileReader = new FileReader(filePath);
-                // 创建BufferedReader对象
-                BufferedReader bufferedReader = new BufferedReader(fileReader);
-                // 读取文件内容
-                String line;
-                while ((line = bufferedReader.readLine()) != null) {
-                    result = result + line;
-                }
-                System.out.println(result);
-                // 关闭BufferedReader
-                bufferedReader.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            //组合
-            question = result + front;
+            question = promptTemplateService.renderPrompt(PromptKeys.STUDENT_INSPIRATION, Map.of(
+                    "question", String.valueOf(question_text),
+                    "questionAnalysis", String.valueOf(question_analysis),
+                    "wrongText", String.valueOf(wrongText)
+            ));
         }
 
 
@@ -300,31 +282,11 @@ public class GptServiceImpl {
 
             String question_analysis = concreteQuestion.getQuestionAnalysis();
 
-            String front = "这是我要向你询问的题目：" + question_text + "这道题的正确解法是：" + question_analysis;
-
-            String result = "";
-
-            String filePath = "src/main/java/Python_API/PersonalExplanation/prompt_GPT4.txt";
-
-            try {
-                // 创建并使用FileReader对象
-                FileReader fileReader = new FileReader(filePath);
-                BufferedReader bufferedReader = new BufferedReader(fileReader);
-                String line;int lineNumber=0;
-                while ((line = bufferedReader.readLine()) != null) {
-                    if(lineNumber==2){
-                        result = result + line + studentCharactor;
-                    }
-                    result = result + line;
-                    lineNumber+=1;
-                }
-                System.out.println(result);
-                bufferedReader.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            //组合成发给GPT的问题
-            question = result + front;
+            question = promptTemplateService.renderPrompt(PromptKeys.STUDENT_PERSONAL_EXPLANATION, Map.of(
+                    "studentCharacter", String.valueOf(studentCharactor),
+                    "question", String.valueOf(question_text),
+                    "questionAnalysis", String.valueOf(question_analysis)
+            ));
         }
 
         //如果 Session 有内容
@@ -504,27 +466,10 @@ public class GptServiceImpl {
             ConcreteQuestion concreteQuestion = mongoTemplate.findOne(query, ConcreteQuestion.class);
             String question_analysis = concreteQuestion.getQuestionAnalysis();
 
-            String front = "这是我要向你提问的题目："+question_text+"这道题的正确解法是："+question_analysis;
-
-            List<String> resultList = new ArrayList<>();
-
-            String filePath = "src/main/java/Python_API/FeimanLearningMethod/prompt_GPT4.txt";
-
-            try {
-                // 创建并使用FileReader对象
-                FileReader fileReader = new FileReader(filePath);
-                BufferedReader bufferedReader = new BufferedReader(fileReader);
-                String line;
-                while ((line = bufferedReader.readLine()) != null) {
-                    resultList.add(line);
-                }
-                bufferedReader.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            //组合成发给GPT的问题
-            question = resultList.get(0) + front +resultList.get(1);
+            question = promptTemplateService.renderPrompt(PromptKeys.STUDENT_FEIMAN, Map.of(
+                    "question", String.valueOf(question_text),
+                    "questionAnalysis", String.valueOf(question_analysis)
+            ));
         }
 
         //如果 Session 有内容

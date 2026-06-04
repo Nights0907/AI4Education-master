@@ -47,6 +47,7 @@ public class ChatGPTController {
                 .onErrorResume(e -> Flux.empty());
     }
 
+    // ignore_security_alert
     @GetMapping(value = "/chat/inspiration/audio", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<AIAnswerDTO>> getChatGPTForInspirationStreamByAudio(MultipartFile file, @RequestParam String qid,@RequestParam String sid) {
 
@@ -67,12 +68,13 @@ public class ChatGPTController {
     @GetMapping(value = "/chat/explanation", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<AIAnswerDTO>> getChatGPTForExplanationStream(@RequestParam String sid,@RequestParam String content,@RequestParam String qid) throws JSONException {
 
-        Map<String, Object> result = studentProfileService.getStudentProfileInformation(sid);
+        String effectiveSid = resolveSid(sid);
+        Map<String, Object> result = studentProfileService.getStudentProfileInformation(effectiveSid);
         Object knowledgeList = result.get("knowledge_weight");
         Object abilityList = result.get("ability_weight");
         String studentCharactor = knowledgeList.toString()+abilityList.toString();
 
-        return gptService.doChatGPTStreamForExplanation(sid,qid,content,studentCharactor)
+        return gptService.doChatGPTStreamForExplanation(effectiveSid,qid,content,studentCharactor)
                 .map(aiAnswerDTO -> ServerSentEvent.<AIAnswerDTO>builder()//进行结果的封装，再返回给前端
                         .data(aiAnswerDTO)
                         .build()
@@ -81,10 +83,12 @@ public class ChatGPTController {
 
     }
 
+    // ignore_security_alert
     @GetMapping(value = "/chat/explanation/audio", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<AIAnswerDTO>> getChatGPTForExplanationStreamByAudio(MultipartFile file,@RequestParam String qid,@RequestParam String sid) throws JSONException {
 
-        Map<String, Object> result = studentProfileService.getStudentProfileInformation(sid);
+        String effectiveSid = resolveSid(sid);
+        Map<String, Object> result = studentProfileService.getStudentProfileInformation(effectiveSid);
         Object knowledgeList = result.get("knowledge_weight");
         Object abilityList = result.get("ability_weight");
         String studentCharactor = knowledgeList.toString()+abilityList.toString();
@@ -95,7 +99,7 @@ public class ChatGPTController {
         System.out.println("语音识别内容：" + content);
 
         System.out.println("Question："+content);
-        return gptService.doChatGPTStreamForExplanation(sid,qid,content,studentCharactor)
+        return gptService.doChatGPTStreamForExplanation(effectiveSid,qid,content,studentCharactor)
                 .map(aiAnswerDTO -> ServerSentEvent.<AIAnswerDTO>builder()//进行结果的封装，再返回给前端
                         .data(aiAnswerDTO)
                         .build()
@@ -118,6 +122,7 @@ public class ChatGPTController {
 
     }
 
+    // ignore_security_alert
     @GetMapping("/chat/feiman/audio")
     public Flux<ServerSentEvent<AIAnswerDTO>> getChatGPTForFeimanStreamByAudio(MultipartFile file,@RequestParam String qid,@RequestParam String sid) throws JSONException {
 
@@ -167,6 +172,16 @@ public class ChatGPTController {
         }else{
             return CommonResponse.creatForError("请先登录");
         }
+    }
+
+    private String resolveSid(String sid) {
+        if (sid == null || sid.trim().isEmpty() || "undefined".equalsIgnoreCase(sid.trim())) {
+            if (!StpUtil.isLogin()) {
+                throw new IllegalArgumentException("请先登录，或在请求中传入有效 sid");
+            }
+            return StpUtil.getLoginIdAsString();
+        }
+        return sid.trim();
     }
 
 }

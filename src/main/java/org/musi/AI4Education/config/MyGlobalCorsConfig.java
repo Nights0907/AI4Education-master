@@ -17,6 +17,7 @@ public class MyGlobalCorsConfig implements WebMvcConfigurer {
                 .allowedOrigins(allowedOrigins)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
+                .exposedHeaders("userToken", "Authorization")
                 .allowCredentials(true)
                 .maxAge(3600);
     }

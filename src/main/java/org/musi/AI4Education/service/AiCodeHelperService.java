@@ -10,17 +10,18 @@ import reactor.core.publisher.Flux;
 import java.util.List;
 public interface AiCodeHelperService {
 
-    @SystemMessage(fromResource = "system_prompt.txt")
+    @SystemMessage(fromResource = "prompts/math/solution_steps.txt")
     String chat(String userMessage);
 
-    @SystemMessage(fromResource = "system_prompt.txt")
+    @SystemMessage(fromResource = "prompts/math/solution_steps.txt")
     Report chatForReport(String userMessage);
 
     record Report(String name, List<String> suggestionList){};
 
-    @SystemMessage(fromResource = "system_prompt.txt")
+    @SystemMessage(fromResource = "prompts/math/solution_steps.txt")
     Result<String> chatWithRag(String userMessage);
 
+    @SystemMessage(fromResource = "prompts/math/solution_steps.txt")
     Flux<String> chatStream(@UserMessage String message);
 
 }

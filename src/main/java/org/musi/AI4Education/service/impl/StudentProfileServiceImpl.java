@@ -17,9 +17,11 @@ import org.musi.AI4Education.domain.*;
 import org.musi.AI4Education.config.Wen_XinConfig;
 import org.musi.AI4Education.mapper.BasicQuestionMapper;
 import org.musi.AI4Education.mapper.StudentProfileMapper;
+import org.musi.AI4Education.prompt.PromptKeys;
 import org.musi.AI4Education.service.BasicQuestionService;
 import org.musi.AI4Education.service.ChatGPTService;
 import org.musi.AI4Education.service.ConcreteQuestionService;
+import org.musi.AI4Education.service.PromptTemplateService;
 import org.musi.AI4Education.service.StudentProfileService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -40,8 +42,6 @@ import reactor.core.publisher.Flux;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.sql.Date;
 import java.time.LocalDate;
@@ -63,6 +63,8 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
     private ChatGPTService chatGPTservice;
     @Autowired
     private ConcreteQuestionService concreteQuestionService;
+    @Autowired
+    private PromptTemplateService promptTemplateService;
     @Autowired
     private Wen_XinConfig wenXinConfig;
 
@@ -166,29 +168,9 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
             sessions.put(qidForChatHistory, session); // 将新的会话对象放入 sessions 中
         }
 
-        String first = "";
-
-        String filePath = "src/main/java/Python_API/PersonalCharactor/prompt.txt";
-
-        try {
-            // 创建FileReader对象
-            FileReader fileReader = new FileReader(filePath);
-            // 创建BufferedReader对象
-            BufferedReader bufferedReader = new BufferedReader(fileReader);
-            // 读取文件内容
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                first = first + line;
-            }
-            System.out.println(first);
-            // 关闭BufferedReader
-            bufferedReader.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        //组合
-        question = first + "下面是对话记录：" + mergedChatHistories;
+        question = promptTemplateService.renderPrompt(PromptKeys.STUDENT_PERSONAL_CHARACTER, Map.of(
+                "chatHistories", mergedChatHistories
+        ));
 
         ChatRequestDTO.ReqMessage message = new ChatRequestDTO.ReqMessage();//设置请求消息，在此可以加入自己的prompt
         message.setRole("user");//用户消息
@@ -334,31 +316,9 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
         InspirationChatHistory inspirationChatHistory = chatGPTservice.getInspirationChatHistoryByQid(qid);
         List<HashMap<String, String>> mergedChatHistories = mergeChatHistories(explanationChatHistory, feimanChatHistory, inspirationChatHistory);
 
-        String question = "";
-        String first = "";
-
-        //路径需要修改
-        String filePath = "src/main/java/Python_API/PersonalCharactor/prompt.txt";
-
-        try {
-            // 创建FileReader对象
-            FileReader fileReader = new FileReader(filePath);
-            // 创建BufferedReader对象
-            BufferedReader bufferedReader = new BufferedReader(fileReader);
-            // 读取文件内容
-            String line;
-            while ((line = bufferedReader.readLine()) != null) {
-                first = first + line;
-            }
-            System.out.println(first);
-            // 关闭BufferedReader
-            bufferedReader.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        //组合
-        question = first + "下面是对话记录：" + mergedChatHistories + "\n请只返回如<output>那样的内容,不用带上<output>";
+        String question = promptTemplateService.renderPrompt(PromptKeys.STUDENT_PERSONAL_CHARACTER, Map.of(
+                "chatHistories", mergedChatHistories
+        ));
         String result = concreteQuestionService.connectWithBigModelStreamTransition(question);
 
         // 处理字符串
@@ -493,9 +453,17 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
     @Override
     public Map<String, Object> getStudentProfileInformation(String sid){
 
-        Criteria criteria = Criteria.where("sid").is(sid);
+        String normalizedSid = sid.trim();
+        System.out.println("[StudentProfile] raw sid=" + sid + ", length=" + sid.length());
+        System.out.println("[StudentProfile] normalized sid=" + normalizedSid + ", length=" + normalizedSid.length());
+        Criteria criteria = Criteria.where("sid").is(normalizedSid);
         Query query = new Query(criteria);
-        StudentProfile studentProfile = mongoTemplate.findOne(query, StudentProfile.class);
+        StudentProfile studentProfile = mongoTemplate.findOne(query, StudentProfile.class, "studentProfile");
+        System.out.println("[StudentProfile] query result=" + studentProfile);
+        if (studentProfile == null) {
+            System.out.println("[StudentProfile] not found in Mongo collection studentProfile, sid=" + normalizedSid);
+            throw new IllegalArgumentException("Student profile not found, sid=" + normalizedSid);
+        }
 
         // 处理知识点
         List<KnowledgePoint> knowledgePointList = studentProfile.getKnowledgePointList();

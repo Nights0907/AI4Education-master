@@ -36,6 +36,7 @@ public class StudentController {
         StpUtil.login(student.getSid());
         String token = StpUtil.getTokenValue();
         studentService.updateStudentState(student.getSid(),1);
+        System.out.println("[Login] sid=" + student.getSid() + ", token=" + token);
         return CommonResponse.creatForSuccess(new LoginResponse(student.getSid(), token));
     }
 
