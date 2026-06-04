@@ -61,7 +61,7 @@ public class DocumentVectorService {
      */
     private void ingestDocuments() {
         // 加载文档
-        List<Document> documents = ClassPathDocumentLoader.loadDocuments("questions");
+        List<Document> documents = ClassPathDocumentLoader.loadDocuments("documents");
         System.out.println("加载文档数量: " + documents.size());
 
         // 使用段落分割器

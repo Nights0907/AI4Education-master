@@ -51,7 +51,7 @@ public class RagConfig {
     private void initializeLuceneIndex() {
         try {
             // 加载文档用于构建Lucene索引
-            List<Document> documents = ClassPathDocumentLoader.loadDocuments("questions");
+            List<Document> documents = ClassPathDocumentLoader.loadDocuments("documents");
             DocumentByParagraphSplitter paragraphSplitter = new DocumentByParagraphSplitter(300, 100);
             
             org.apache.lucene.index.IndexWriter writer = new org.apache.lucene.index.IndexWriter(
