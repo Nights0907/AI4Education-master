@@ -67,10 +67,6 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
 
     private final ConcurrentMap<Long, SseEmitter> emitters = new ConcurrentHashMap<>();
 
-    List<Map<String,String>> listMessage = new ArrayList<>();
-
-    List<Map<String,String>> listMessage1 = new ArrayList<>();
-
     @Resource
     private AiCodeHelperService aiCodeHelperService;
 
@@ -101,7 +97,14 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
         request.put("temperature",temperature);
         request.put("top_p",topP);
         request.put("stream",stream);
-        request.put("messages",messages);
+        List<Map<String, String>> requestMessages = new ArrayList<>();
+        for (Map<String, String> message : messages) {
+            Map<String, String> requestMessage = new HashMap<>();
+            requestMessage.put("role", message.get("role"));
+            requestMessage.put("content", message.get("content"));
+            requestMessages.add(requestMessage);
+        }
+        request.put("messages",requestMessages);
         System.out.println(JSON.toJSONString(request));
         return JSON.toJSONString(request);
     }
@@ -176,31 +179,30 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
     public Flux<String> useWenxinStreamTransformToCommunicateWithUser(String sid,String qid, String content) throws IOException, JSONException {
 
         String qidForChatHistory = qid+"001";
+        String sessionKey = sid + ":" + qidForChatHistory;
         BasicQuestion basicQuestion = new BasicQuestion();
         basicQuestion.setQid(qid);
         String question = String.valueOf(basicQuestionService.getQuestionTextByQid(basicQuestion));
 
-        // 直接尝试获取会话对象
-        ChatSession session = sessions.get(qidForChatHistory);
+        ChatSession currentSession = sessions.get(sessionKey);
+        String displayContent = content;
 
-        if (session == null) { // 如果获取的会话对象为空
-            // 说明这是第一次创建
-            session = new ChatSession(); // 创建新的会话对象
-            sessions.put(qidForChatHistory, session); // 将新的会话对象放入 sessions 中
-            // 在这里可以执行第一次创建会话的相关逻辑
+        if (currentSession == null) {
+            currentSession = new ChatSession();
+            sessions.put(sessionKey, currentSession);
             content = promptTemplateService.renderPrompt(PromptKeys.CHAT_QUESTION_FIRST_TURN, Map.of(
                     "question", String.valueOf(question),
                     "content", String.valueOf(content)
             ));
         }
 
-
-        //设置请求体 这一部分可以放到Service
+        ChatSession chatSession = currentSession;
         HashMap<String, String> user = new HashMap<>();
         user.put("role","user");
         user.put("content",content);
-        listMessage.add(user);
-        String requestJson = constructRequestJson(1,0.95,0.8,1.0,true,listMessage);
+        user.put("displayUser",displayContent);
+        chatSession.addMessage(user);
+        String requestJson = constructRequestJson(1,0.95,0.8,1.0,true,new ArrayList<>(chatSession.getMessages()));
 
         //进行数据访问 返回String类型的数据
         StringBuffer answer=new StringBuffer();
@@ -209,7 +211,6 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
                 .retrieve()
                 .bodyToFlux(String.class)
                 .flatMap(data -> Flux.fromIterable(extractStreamContents(data)))
-                .map(result -> result.replace("\n", " "))
                 .doOnNext(result -> {
                     System.out.println(result);
                     answer.append(result);
@@ -221,7 +222,7 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
                     HashMap<String, String> assistant = new HashMap<>();
                     assistant.put("role","assistant");
                     assistant.put("content",answer.toString());
-                    listMessage.add(assistant);
+                    chatSession.addMessage(assistant);
 
                     //将数据存入MongoDB数据库
 
@@ -236,11 +237,14 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
                     List<HashMap<String,String>> chatHistoryTemp = new ArrayList<>();
                     //存入MongoDB
                     //获取当前该用户的该题的聊天记录
-                    for (Map<String, String> message : listMessage) {
+                    for (Map<String, String> message : chatSession.getMessages()) {
                         String role1 = message.get("role");
                         String content1 = message.get("content");
                         HashMap<String,String> temp = new HashMap<>();
                         temp.put(role1,content1);
+                        if (message.containsKey("displayUser")) {
+                            temp.put("displayUser", message.get("displayUser"));
+                        }
                         chatHistoryTemp.add(temp);
                     }
 
@@ -264,19 +268,17 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
     public Flux<String> useWenxinStreamTransformToCommunicateWithUserWithWrongAnswer(String sid,String qid, String wrongText, String wrongReason, String content) throws IOException, JSONException {
 
         String qidForChatHistory = qid+"002";
+        String sessionKey = sid + ":" + qidForChatHistory;
         BasicQuestion basicQuestion = new BasicQuestion();
         basicQuestion.setQid(qid);
         String question = String.valueOf(basicQuestionService.getQuestionTextByQid(basicQuestion));
 
 
-        // 直接尝试获取会话对象
-        ChatSession session = sessions.get(qidForChatHistory);
+        ChatSession currentSession = sessions.get(sessionKey);
 
-        if (session == null) { // 如果获取的会话对象为空
-            // 说明这是第一次创建
-            session = new ChatSession(); // 创建新的会话对象
-            sessions.put(qidForChatHistory, session); // 将新的会话对象放入 sessions 中
-            // 在这里可以执行第一次创建会话的相关逻辑
+        if (currentSession == null) {
+            currentSession = new ChatSession();
+            sessions.put(sessionKey, currentSession);
             content = promptTemplateService.renderPrompt(PromptKeys.CHAT_WRONG_ANSWER_FIRST_TURN, Map.of(
                     "question", String.valueOf(question),
                     "wrongText", String.valueOf(wrongText),
@@ -285,12 +287,12 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
             ));
         }
 
-        //设置请求体 这一部分可以放到Service
+        ChatSession chatSession = currentSession;
         HashMap<String, String> user = new HashMap<>();
         user.put("role","user");
         user.put("content",content);
-        listMessage1.add(user);
-        String requestJson = constructRequestJson(1,0.95,0.8,1.0,true,listMessage1);
+        chatSession.addMessage(user);
+        String requestJson = constructRequestJson(1,0.95,0.8,1.0,true,new ArrayList<>(chatSession.getMessages()));
 
         //进行数据访问 返回String类型的数据
         StringBuffer answer=new StringBuffer();
@@ -299,7 +301,6 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
                 .retrieve()
                 .bodyToFlux(String.class)
                 .flatMap(data -> Flux.fromIterable(extractStreamContents(data)))
-                .map(result -> result.replace("\n", " "))
                 .doOnNext(result -> {
                     System.out.println(result);
                     answer.append(result);
@@ -311,7 +312,7 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
                     HashMap<String, String> assistant = new HashMap<>();
                     assistant.put("role","assistant");
                     assistant.put("content",answer.toString());
-                    listMessage1.add(assistant);
+                    chatSession.addMessage(assistant);
 
                     //将数据存入MongoDB数据库
 
@@ -326,7 +327,7 @@ public class ConcreteQuestionServiceImpl extends ServiceImpl<ConcreteQuestionMap
                     List<HashMap<String,String>> chatHistoryTemp = new ArrayList<>();
                     //存入MongoDB
                     //获取当前该用户的该题的聊天记录
-                    for (Map<String, String> message : listMessage1) {
+                    for (Map<String, String> message : chatSession.getMessages()) {
                         String role1 = message.get("role");
                         String content1 = message.get("content");
                         HashMap<String,String> temp = new HashMap<>();

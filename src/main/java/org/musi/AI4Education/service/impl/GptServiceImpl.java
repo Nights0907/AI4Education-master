@@ -7,6 +7,7 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.bson.Document;
 import org.musi.AI4Education.domain.*;
 import org.musi.AI4Education.prompt.PromptKeys;
 import org.musi.AI4Education.service.BasicQuestionService;
@@ -69,39 +70,72 @@ public class GptServiceImpl {
                 .build();
     }
 
+    private ChatSession loadChatSession(String sid, String qidForChatHistory, String collectionName) {
+        ChatSession session = new ChatSession();
+        Query query = new Query(new Criteria().andOperator(
+                Criteria.where("sid").is(sid),
+                Criteria.where("qid").is(qidForChatHistory)
+        ));
+        Document history = mongoTemplate.findOne(query, Document.class, collectionName);
+        if (history == null) {
+            return session;
+        }
+        List<Document> messages = history.getList("wenxinChatHistory", Document.class);
+        if (messages == null) {
+            return session;
+        }
+        for (Document message : messages) {
+            for (String role : List.of("user", "assistant")) {
+                String content = message.getString(role);
+                if (content != null) {
+                    HashMap<String, String> item = new HashMap<>();
+                    item.put("role", role);
+                    item.put("content", content);
+                    session.addMessage(item);
+                }
+            }
+        }
+        return session;
+    }
+
     //请求stream的主题
     public Flux<AIAnswerDTO> doChatGPTStreamForInspiration(String sid,String qid, String question) {
 
         String qidForChatHistory = qid + "003";
+        String sessionKey = sid + ":" + qidForChatHistory;
         //构建请求对象
         ChatRequestDTO chatRequestDTO = new ChatRequestDTO();
         chatRequestDTO.setModel(qwenModel);//设置模型
         chatRequestDTO.setStream(true);//设置流式返回
 
         // 直接尝试获取会话对象
-        ChatSession session = sessions.get(qidForChatHistory);
+        ChatSession session = sessions.get(sessionKey);
         //如果 Session 没有内容
         if (session == null) { // 如果获取的会话对象为空
             // 说明这是第一次创建
-            session = new ChatSession(); // 创建新的会话对象
-            sessions.put(qidForChatHistory, session); // 将新的会话对象放入 sessions 中
+            session = loadChatSession(sid, qidForChatHistory, "inspirationChatHistory"); // 创建新的会话对象
+            sessions.put(sessionKey, session); // 将新的会话对象放入 sessions 中
 
-            // 在这里可以执行第一次创建会话的相关逻辑
-            BasicQuestion basicQuestion = new BasicQuestion();
-            basicQuestion.setQid(qid);
-            String question_text = basicQuestionService.getQuestionTextByQid(basicQuestion);
-            String wrongText = basicQuestionService.getQuestionWrongTextByQid(basicQuestion);
+            if (session.getMessages().isEmpty()) {
+                BasicQuestion basicQuestion = new BasicQuestion();
+                basicQuestion.setQid(qid);
+                String question_text = basicQuestionService.getQuestionTextByQid(basicQuestion);
+                String wrongText = basicQuestionService.getQuestionWrongTextByQid(basicQuestion);
+                if (wrongText.isBlank()) {
+                    wrongText = "学生尚未上传自己的解题方法，请先围绕题目本身进行引导。";
+                }
 
-            Query query = new Query();
-            query.addCriteria(Criteria.where("qid").is(qid));
-            ConcreteQuestion concreteQuestion = mongoTemplate.findOne(query, ConcreteQuestion.class);
-            String question_analysis = concreteQuestion.getQuestionAnalysis();
+                Query query = new Query();
+                query.addCriteria(Criteria.where("qid").is(qid));
+                ConcreteQuestion concreteQuestion = mongoTemplate.findOne(query, ConcreteQuestion.class);
+                String question_analysis = concreteQuestion == null ? "" : concreteQuestion.getQuestionAnalysis();
 
-            question = promptTemplateService.renderPrompt(PromptKeys.STUDENT_INSPIRATION, Map.of(
-                    "question", String.valueOf(question_text),
-                    "questionAnalysis", String.valueOf(question_analysis),
-                    "wrongText", String.valueOf(wrongText)
-            ));
+                question = promptTemplateService.renderPrompt(PromptKeys.STUDENT_INSPIRATION, Map.of(
+                        "question", String.valueOf(question_text),
+                        "questionAnalysis", String.valueOf(question_analysis),
+                        "wrongText", String.valueOf(wrongText)
+                ));
+            }
         }
 
 
@@ -115,7 +149,7 @@ public class GptServiceImpl {
         ArrayList<ChatRequestDTO.ReqMessage> messages = new ArrayList<>();
 
         //先获取之前的大模型聊天记录
-        ChatSession session1 = sessions.getOrDefault(qidForChatHistory, new ChatSession());
+        ChatSession session1 = sessions.getOrDefault(sessionKey, new ChatSession());
 
         List<HashMap<String, String>> messages0 = session1.getMessages();
         for (HashMap<String, String> message0 : messages0) {
@@ -132,7 +166,7 @@ public class GptServiceImpl {
         msg.put("role", "user");
         msg.put("content", question);
         session1.addMessage(msg);
-        sessions.put(qidForChatHistory, session1);
+        sessions.put(sessionKey, session1);
 
         // 请求 ChatGPT 请求头
         messages.add(message);
@@ -155,8 +189,9 @@ public class GptServiceImpl {
 
     private Flux<AIAnswerDTO> handleWebClientResponseForInspiration(String sid,String qid,String resp) {
 
-        String qidForContent = qid + "000" + "003";
+        String qidForContent = sid + ":" + qid + "000" + "003";
         String qidForChatHistory = qid + "003";
+        String sessionKey = sid + ":" + qidForChatHistory;
 
         if (StrUtil.equals("[DONE]",resp)){//[DONE]是消息结束标识
 
@@ -166,25 +201,17 @@ public class GptServiceImpl {
 
             //将大模型返回的消息存入Session
             //首先获取之前的Session，将大模型答案添加到Session中
-            ChatSession session = sessions.get(qidForContent);
+            ChatSession session = sessions.getOrDefault(qidForContent, new ChatSession());
             String answer = session.getContent();
 
-            ChatSession session1 = sessions.getOrDefault(qidForChatHistory,new ChatSession());
+            ChatSession session1 = sessions.getOrDefault(sessionKey,new ChatSession());
 
 
-            //获取之前所有的历史记录
             HashMap<String, String> msg1 = new HashMap<>();
-            List<HashMap<String, String>> messages = session1.getMessages();
-            for (HashMap<String, String> message : messages) {
-                String role1 = message.get("role");
-                String content1 = message.get("content");
-                msg1.put(role1, content1);
-            }
-            //将新的大模型结果存入Session
             msg1.put("role", "assistant");
             msg1.put("content", answer);
             session1.addMessage(msg1);
-            sessions.put(qidForChatHistory, session1);
+            sessions.put(sessionKey, session1);
 
 
             //清空当前sesssion内容，为下一次存储做准备
@@ -194,7 +221,7 @@ public class GptServiceImpl {
 
             //存入MongoDB
             //获取当前该用户的该题的聊天记录
-            ChatSession session2 = sessions.getOrDefault(qidForChatHistory, new ChatSession());
+            ChatSession session2 = sessions.getOrDefault(sessionKey, new ChatSession());
             List<HashMap<String, String>> messages1 = session2.getMessages();
             List<HashMap<String,String>> chatHistoryTemp = new ArrayList<>();
             for (HashMap<String, String> message : messages1) {
@@ -258,35 +285,37 @@ public class GptServiceImpl {
     public Flux<AIAnswerDTO> doChatGPTStreamForExplanation(String sid,String qid, String question,String studentCharactor) {
 
         String qidForChatHistory = qid + "004";
+        String sessionKey = sid + ":" + qidForChatHistory;
         //构建请求对象
         ChatRequestDTO chatRequestDTO = new ChatRequestDTO();
         chatRequestDTO.setModel(qwenModel);//设置模型
         chatRequestDTO.setStream(true);//设置流式返回
 
         // 直接尝试获取会话对象
-        ChatSession session = sessions.get(qidForChatHistory);
+        ChatSession session = sessions.get(sessionKey);
         //如果 Session 没有内容
         if (session == null) { // 如果获取的会话对象为空
             // 说明这是第一次创建
-            session = new ChatSession(); // 创建新的会话对象
-            sessions.put(qidForChatHistory, session); // 将新的会话对象放入 sessions 中
+            session = loadChatSession(sid, qidForChatHistory, "explanationChatHistory"); // 创建新的会话对象
+            sessions.put(sessionKey, session); // 将新的会话对象放入 sessions 中
 
-            // 在这里可以执行第一次创建会话的相关逻辑
-            BasicQuestion basicQuestion = new BasicQuestion();
-            basicQuestion.setQid(qid);
-            String question_text = basicQuestionService.getQuestionTextByQid(basicQuestion);
+            if (session.getMessages().isEmpty()) {
+                BasicQuestion basicQuestion = new BasicQuestion();
+                basicQuestion.setQid(qid);
+                String question_text = basicQuestionService.getQuestionTextByQid(basicQuestion);
 
-            Query query = new Query();
-            query.addCriteria(Criteria.where("qid").is(qid));
-            ConcreteQuestion concreteQuestion = mongoTemplate.findOne(query, ConcreteQuestion.class);
+                Query query = new Query();
+                query.addCriteria(Criteria.where("qid").is(qid));
+                ConcreteQuestion concreteQuestion = mongoTemplate.findOne(query, ConcreteQuestion.class);
 
-            String question_analysis = concreteQuestion.getQuestionAnalysis();
+                String question_analysis = concreteQuestion == null ? "" : concreteQuestion.getQuestionAnalysis();
 
-            question = promptTemplateService.renderPrompt(PromptKeys.STUDENT_PERSONAL_EXPLANATION, Map.of(
-                    "studentCharacter", String.valueOf(studentCharactor),
-                    "question", String.valueOf(question_text),
-                    "questionAnalysis", String.valueOf(question_analysis)
-            ));
+                question = promptTemplateService.renderPrompt(PromptKeys.STUDENT_PERSONAL_EXPLANATION, Map.of(
+                        "studentCharacter", String.valueOf(studentCharactor),
+                        "question", String.valueOf(question_text),
+                        "questionAnalysis", String.valueOf(question_analysis)
+                ));
+            }
         }
 
         //如果 Session 有内容
@@ -300,7 +329,7 @@ public class GptServiceImpl {
 
 
         //先获取之前的大模型聊天记录
-        ChatSession session1 = sessions.getOrDefault(qidForChatHistory, new ChatSession());
+        ChatSession session1 = sessions.getOrDefault(sessionKey, new ChatSession());
 
         List<HashMap<String, String>> messages0 = session1.getMessages();
         for (HashMap<String, String> message0 : messages0) {
@@ -317,7 +346,7 @@ public class GptServiceImpl {
         msg.put("role", "user");
         msg.put("content", question);
         session1.addMessage(msg);
-        sessions.put(qidForChatHistory, session1);
+        sessions.put(sessionKey, session1);
 
         // 请求 ChatGPT 请求头
         messages.add(message);
@@ -340,8 +369,9 @@ public class GptServiceImpl {
 
     private Flux<AIAnswerDTO> handleWebClientResponseForExplanation(String sid,String qid,String resp) {
 
-        String qidForContent = qid + "000" + "004";
+        String qidForContent = sid + ":" + qid + "000" + "004";
         String qidForChatHistory = qid + "004";
+        String sessionKey = sid + ":" + qidForChatHistory;
 
         if (StrUtil.equals("[DONE]",resp)){//[DONE]是消息结束标识
 
@@ -351,25 +381,17 @@ public class GptServiceImpl {
 
             //将大模型返回的消息存入Session
             //首先获取之前的Session，将大模型答案添加到Session中
-            ChatSession session = sessions.get(qidForContent);
+            ChatSession session = sessions.getOrDefault(qidForContent, new ChatSession());
             String answer = session.getContent();
 
-            ChatSession session1 = sessions.getOrDefault(qidForChatHistory,new ChatSession());
+            ChatSession session1 = sessions.getOrDefault(sessionKey,new ChatSession());
 
 
-            //获取之前所有的历史记录
             HashMap<String, String> msg1 = new HashMap<>();
-            List<HashMap<String, String>> messages = session1.getMessages();
-            for (HashMap<String, String> message : messages) {
-                String role1 = message.get("role");
-                String content1 = message.get("content");
-                msg1.put(role1, content1);
-            }
-            //将新的大模型结果存入Session
             msg1.put("role", "assistant");
             msg1.put("content", answer);
             session1.addMessage(msg1);
-            sessions.put(qidForChatHistory, session1);
+            sessions.put(sessionKey, session1);
 
 
             //清空当前sesssion内容，为下一次存储做准备
@@ -379,7 +401,7 @@ public class GptServiceImpl {
 
             //存入MongoDB
             //获取当前该用户的该题的聊天记录
-            ChatSession session2 = sessions.getOrDefault(qidForChatHistory, new ChatSession());
+            ChatSession session2 = sessions.getOrDefault(sessionKey, new ChatSession());
             List<HashMap<String, String>> messages1 = session2.getMessages();
             List<HashMap<String,String>> chatHistoryTemp = new ArrayList<>();
             for (HashMap<String, String> message : messages1) {
@@ -443,33 +465,35 @@ public class GptServiceImpl {
     public Flux<AIAnswerDTO> doChatGPTStreamForFeiman(String sid,String qid, String question) {
 
         String qidForChatHistory = qid + "005";
+        String sessionKey = sid + ":" + qidForChatHistory;
         //构建请求对象
         ChatRequestDTO chatRequestDTO = new ChatRequestDTO();
         chatRequestDTO.setModel(qwenModel);//设置模型
         chatRequestDTO.setStream(true);//设置流式返回
 
         // 直接尝试获取会话对象
-        ChatSession session = sessions.get(qidForChatHistory);
+        ChatSession session = sessions.get(sessionKey);
         //如果 Session 没有内容
         if (session == null) { // 如果获取的会话对象为空
             // 说明这是第一次创建
-            session = new ChatSession(); // 创建新的会话对象
-            sessions.put(qidForChatHistory, session); // 将新的会话对象放入 sessions 中
+            session = loadChatSession(sid, qidForChatHistory, "feimanChatHistory"); // 创建新的会话对象
+            sessions.put(sessionKey, session); // 将新的会话对象放入 sessions 中
 
-            // 在这里可以执行第一次创建会话的相关逻辑
-            BasicQuestion basicQuestion = new BasicQuestion();
-            basicQuestion.setQid(qid);
-            String question_text = basicQuestionService.getQuestionTextByQid(basicQuestion);
+            if (session.getMessages().isEmpty()) {
+                BasicQuestion basicQuestion = new BasicQuestion();
+                basicQuestion.setQid(qid);
+                String question_text = basicQuestionService.getQuestionTextByQid(basicQuestion);
 
-            Query query = new Query();
-            query.addCriteria(Criteria.where("qid").is(qid));
-            ConcreteQuestion concreteQuestion = mongoTemplate.findOne(query, ConcreteQuestion.class);
-            String question_analysis = concreteQuestion.getQuestionAnalysis();
+                Query query = new Query();
+                query.addCriteria(Criteria.where("qid").is(qid));
+                ConcreteQuestion concreteQuestion = mongoTemplate.findOne(query, ConcreteQuestion.class);
+                String question_analysis = concreteQuestion == null ? "" : concreteQuestion.getQuestionAnalysis();
 
-            question = promptTemplateService.renderPrompt(PromptKeys.STUDENT_FEIMAN, Map.of(
-                    "question", String.valueOf(question_text),
-                    "questionAnalysis", String.valueOf(question_analysis)
-            ));
+                question = promptTemplateService.renderPrompt(PromptKeys.STUDENT_FEIMAN, Map.of(
+                        "question", String.valueOf(question_text),
+                        "questionAnalysis", String.valueOf(question_analysis)
+                ));
+            }
         }
 
         //如果 Session 有内容
@@ -483,7 +507,7 @@ public class GptServiceImpl {
 
 
         //先获取之前的大模型聊天记录
-        ChatSession session1 = sessions.getOrDefault(qidForChatHistory, new ChatSession());
+        ChatSession session1 = sessions.getOrDefault(sessionKey, new ChatSession());
 
         List<HashMap<String, String>> messages0 = session1.getMessages();
         for (HashMap<String, String> message0 : messages0) {
@@ -500,7 +524,7 @@ public class GptServiceImpl {
         msg.put("role", "user");
         msg.put("content", question);
         session1.addMessage(msg);
-        sessions.put(qidForChatHistory, session1);
+        sessions.put(sessionKey, session1);
 
         // 请求 ChatGPT 请求头
         messages.add(message);
@@ -523,8 +547,9 @@ public class GptServiceImpl {
 
     private Flux<AIAnswerDTO> handleWebClientResponseForFeiman(String sid,String qid,String resp) {
 
-        String qidForContent = qid + "000" + "005";
+        String qidForContent = sid + ":" + qid + "000" + "005";
         String qidForChatHistory = qid + "005";
+        String sessionKey = sid + ":" + qidForChatHistory;
 
         if (StrUtil.equals("[DONE]",resp)){//[DONE]是消息结束标识
 
@@ -534,25 +559,17 @@ public class GptServiceImpl {
 
             //将大模型返回的消息存入Session
             //首先获取之前的Session，将大模型答案添加到Session中
-            ChatSession session = sessions.get(qidForContent);
+            ChatSession session = sessions.getOrDefault(qidForContent, new ChatSession());
             String answer = session.getContent();
 
-            ChatSession session1 = sessions.getOrDefault(qidForChatHistory,new ChatSession());
+            ChatSession session1 = sessions.getOrDefault(sessionKey,new ChatSession());
 
 
-            //获取之前所有的历史记录
             HashMap<String, String> msg1 = new HashMap<>();
-            List<HashMap<String, String>> messages = session1.getMessages();
-            for (HashMap<String, String> message : messages) {
-                String role1 = message.get("role");
-                String content1 = message.get("content");
-                msg1.put(role1, content1);
-            }
-            //将新的大模型结果存入Session
             msg1.put("role", "assistant");
             msg1.put("content", answer);
             session1.addMessage(msg1);
-            sessions.put(qidForChatHistory, session1);
+            sessions.put(sessionKey, session1);
 
 
             //清空当前sesssion内容，为下一次存储做准备
@@ -562,7 +579,7 @@ public class GptServiceImpl {
 
             //存入MongoDB
             //获取当前该用户的该题的聊天记录
-            ChatSession session2 = sessions.getOrDefault(qidForChatHistory, new ChatSession());
+            ChatSession session2 = sessions.getOrDefault(sessionKey, new ChatSession());
             List<HashMap<String, String>> messages1 = session2.getMessages();
             List<HashMap<String,String>> chatHistoryTemp = new ArrayList<>();
             for (HashMap<String, String> message : messages1) {

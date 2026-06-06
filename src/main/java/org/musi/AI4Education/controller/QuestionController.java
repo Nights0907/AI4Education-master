@@ -12,10 +12,13 @@ import org.musi.AI4Education.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
 import java.util.*;
@@ -34,13 +37,11 @@ public class QuestionController {
     @Autowired
     private ConcreteQuestionService concreteQuestionService;
     @Autowired
-    private OSSService ossService;
-    @Autowired
     private StudentProfileService studentProfileService;
     @Autowired
     private StudentService studentService;
     @Autowired
-    private ChatGPTService chatGPTservice;
+    private SpeechRecognitionService speechRecognitionService;
 
 
     // ignore_security_alert
@@ -183,18 +184,32 @@ public class QuestionController {
 
     @GetMapping(value = "/question/communicationWithUser", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> communicateWithWenxin(@RequestParam String sid,@RequestParam String content,@RequestParam String qid) throws IOException, JSONException {
-        return concreteQuestionService.useWenxinStreamTransformToCommunicateWithUser(sid,qid,content);
+        return concreteQuestionService.useWenxinStreamTransformToCommunicateWithUser(resolveSid(sid),qid,content);
+    }
+
+    @PostMapping(value = "/speech/recognize", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public CommonResponse<String> recognizeSpeech(@RequestParam("file") MultipartFile file) {
+        return CommonResponse.creatForSuccess(speechRecognitionService.recognize(file));
     }
 
     // ignore_security_alert
-    @GetMapping(value = "/question/communicationWithUser/audio", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<String> communicateWithWenxinByAudio(MultipartFile file,@RequestParam String qid,@RequestParam String sid) throws IOException, JSONException {
-
-        String url = ossService.uploadPCMFileAndReturnName(file);
-        System.out.println("图片存储路径："+url);
-        String content = chatGPTservice.getTextByPcm(url);
-        System.out.println("语音识别内容：" + content);
-        return concreteQuestionService.useWenxinStreamTransformToCommunicateWithUser(sid,qid,content);
+    @PostMapping(value = "/question/communicationWithUser/audio", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<String>> communicateWithWenxinByAudio(@RequestParam("file") MultipartFile file, @RequestParam String qid, @RequestParam String sid) throws IOException, JSONException {
+        String effectiveSid = resolveSid(sid);
+        return Mono.fromCallable(() -> speechRecognitionService.recognize(file))
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMapMany(content -> {
+                    try {
+                        System.out.println("语音识别内容：" + content);
+                        return Flux.concat(
+                                Flux.just(ServerSentEvent.<String>builder().event("recognized").data(content).build()),
+                                concreteQuestionService.useWenxinStreamTransformToCommunicateWithUser(effectiveSid, qid, content)
+                                        .map(answer -> ServerSentEvent.<String>builder().data(answer).build())
+                        );
+                    } catch (IOException | JSONException e) {
+                        throw new IllegalStateException(e);
+                    }
+                });
 
     }
 
@@ -206,24 +221,34 @@ public class QuestionController {
         BasicQuestion basicQuestion2 = basicQuestionService.getBasicQuestionByQid(basicQuestion);
         String wrong_text = basicQuestion2.getWrongText();
         String wrongReason = basicQuestion2.getWrongType()+"中的"+basicQuestion2.getWrongDetails();
-        return concreteQuestionService.useWenxinStreamTransformToCommunicateWithUserWithWrongAnswer(sid,qid, String.valueOf(wrong_text),wrongReason,content);
+        return concreteQuestionService.useWenxinStreamTransformToCommunicateWithUserWithWrongAnswer(resolveSid(sid),qid, String.valueOf(wrong_text),wrongReason,content);
     }
 
     // ignore_security_alert
-    @GetMapping(value = "/question/communicationWithUser/wrongAnswer/audio", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public Flux<String> communicateWithWenxinByAudioWithWrongAnswer(MultipartFile file,@RequestParam String qid,@RequestParam String sid) throws IOException, JSONException {
+    @PostMapping(value = "/question/communicationWithUser/wrongAnswer/audio", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<String>> communicateWithWenxinByAudioWithWrongAnswer(@RequestParam("file") MultipartFile file, @RequestParam String qid, @RequestParam String sid) throws IOException, JSONException {
 
         BasicQuestion basicQuestion = new BasicQuestion();
         basicQuestion.setQid(qid);
         BasicQuestion basicQuestion2 = basicQuestionService.getBasicQuestionByQid(basicQuestion);
         String wrong_text = basicQuestion2.getWrongText();
         String wrongReason = basicQuestion2.getWrongType()+"中的"+basicQuestion2.getWrongDetails();
+        String effectiveSid = resolveSid(sid);
 
-        String url = ossService.uploadPCMFileAndReturnName(file);
-        System.out.println("图片存储路径："+url);
-        String content = chatGPTservice.getTextByPcm(url);
-        System.out.println("语音识别内容：" + content);
-        return concreteQuestionService.useWenxinStreamTransformToCommunicateWithUserWithWrongAnswer(sid,qid, String.valueOf(wrong_text),wrongReason,content);
+        return Mono.fromCallable(() -> speechRecognitionService.recognize(file))
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMapMany(content -> {
+                    try {
+                        System.out.println("语音识别内容：" + content);
+                        return Flux.concat(
+                                Flux.just(ServerSentEvent.<String>builder().event("recognized").data(content).build()),
+                                concreteQuestionService.useWenxinStreamTransformToCommunicateWithUserWithWrongAnswer(effectiveSid, qid, String.valueOf(wrong_text), wrongReason, content)
+                                        .map(answer -> ServerSentEvent.<String>builder().data(answer).build())
+                        );
+                    } catch (IOException | JSONException e) {
+                        throw new IllegalStateException(e);
+                    }
+                });
 
     }
 
@@ -374,5 +399,13 @@ public class QuestionController {
         return CommonResponse.creatForSuccess(knowledgeList.toString()+abilityList.toString());
     }
 
-
+    private String resolveSid(String sid) {
+        if (sid == null || sid.trim().isEmpty() || "undefined".equalsIgnoreCase(sid.trim())) {
+            if (!StpUtil.isLogin()) {
+                throw new IllegalArgumentException("请先登录，或在请求中传入有效 sid");
+            }
+            return StpUtil.getLoginIdAsString();
+        }
+        return sid.trim();
+    }
 }

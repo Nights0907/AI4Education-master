@@ -49,6 +49,7 @@ public class BasicQuestionServiceImpl extends ServiceImpl<BasicQuestionMapper, B
         updateWrapper.eq("qid", basicQuestion.getQid());
         updateWrapper.set("wrongType",basicQuestion.getWrongType());
         updateWrapper.set("wrongDetails",basicQuestion.getWrongDetails());
+        updateWrapper.set("wrongText",basicQuestion.getWrongText());
 
         update(basicQuestion,updateWrapper);
 
@@ -156,10 +157,10 @@ public class BasicQuestionServiceImpl extends ServiceImpl<BasicQuestionMapper, B
         wrapper.eq("qid", basicQuestion.getQid());
         System.out.println(basicQuestion.getQid());
         BasicQuestion basicQuestion1=basicQuestionMapper.selectOne(wrapper);
-        String regex = "[\\[\\]{}]";
-        Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(basicQuestion1.getQuestionText());
-        return matcher.replaceAll("");
+        if (basicQuestion1 == null) {
+            return "";
+        }
+        return cleanQuestionText(basicQuestion1.getQuestionText());
     }
 
     @Override
@@ -168,10 +169,19 @@ public class BasicQuestionServiceImpl extends ServiceImpl<BasicQuestionMapper, B
         wrapper.eq("qid", basicQuestion.getQid());
         System.out.println(basicQuestion.getQid());
         BasicQuestion basicQuestion1=basicQuestionMapper.selectOne(wrapper);
+        if (basicQuestion1 == null) {
+            return "";
+        }
+        return cleanQuestionText(basicQuestion1.getWrongText());
+    }
 
+    private String cleanQuestionText(String text) {
+        if (text == null) {
+            return "";
+        }
         String regex = "[\\[\\]{}]";
         Pattern pattern = Pattern.compile(regex);
-        Matcher matcher = pattern.matcher(basicQuestion1.getWrongText());
+        Matcher matcher = pattern.matcher(text);
         return matcher.replaceAll("");
     }
 
