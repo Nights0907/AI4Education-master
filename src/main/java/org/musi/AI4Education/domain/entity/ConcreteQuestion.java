@@ -9,7 +9,6 @@ import java.util.List;
 @Data
 @TableName(value = "question_concrete_info")
 public class ConcreteQuestion {
-
     @TableId
     private String qid;      //题目ID
     private String questionAnswer;   //题目答案
@@ -20,5 +19,4 @@ public class ConcreteQuestion {
     private String questionAnalysis;      //错题分析
     private List<String> knowledges;
     private String note;
-
 }

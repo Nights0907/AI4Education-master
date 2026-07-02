@@ -7,9 +7,7 @@ import java.util.List;
 @Data
 public class ChatRequestDTO {
     private String model;
-
     private List<ReqMessage> messages;
-
     private Boolean stream;
 
     @Data

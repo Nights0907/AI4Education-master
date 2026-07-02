@@ -1,7 +1,7 @@
 package org.musi.AI4Education.domain.dto;
 
-import org.musi.AI4Education.domain.entity.Student;
 import lombok.Data;
+import org.musi.AI4Education.domain.entity.Student;
 
 @Data
 public class StudentDTO {

@@ -5,5 +5,5 @@ import lombok.Data;
 @Data
 public class QuestionStep {
     private int number;  // 步骤标号
-    private String content;  //  详细信息
+    private String content;  //详细信息
 }
