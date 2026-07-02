@@ -1,6 +1,14 @@
 package org.musi.AI4Education.service.impl;
 
 
+import org.musi.AI4Education.domain.chat.ChatSession;
+import org.musi.AI4Education.domain.chat.ExplanationChatHistory;
+import org.musi.AI4Education.domain.chat.FeimanChatHistory;
+import org.musi.AI4Education.domain.chat.InspirationChatHistory;
+import org.musi.AI4Education.domain.dto.AIAnswerDTO;
+import org.musi.AI4Education.domain.dto.ChatRequestDTO;
+import org.musi.AI4Education.domain.entity.BasicQuestion;
+import org.musi.AI4Education.domain.entity.ConcreteQuestion;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
@@ -8,7 +16,6 @@ import cn.hutool.json.JSONUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bson.Document;
-import org.musi.AI4Education.domain.*;
 import org.musi.AI4Education.prompt.PromptKeys;
 import org.musi.AI4Education.service.BasicQuestionService;
 import org.musi.AI4Education.service.PromptTemplateService;
@@ -216,7 +223,7 @@ public class GptServiceImpl {
 
             //清空当前sesssion内容，为下一次存储做准备
             System.out.println("Answer: "+answer);
-            session.ClearContent();
+            session.clearContent();
 
 
             //存入MongoDB
@@ -396,7 +403,7 @@ public class GptServiceImpl {
 
             //清空当前sesssion内容，为下一次存储做准备
             System.out.println("Answer: "+answer);
-            session.ClearContent();
+            session.clearContent();
 
 
             //存入MongoDB
@@ -574,7 +581,7 @@ public class GptServiceImpl {
 
             //清空当前sesssion内容，为下一次存储做准备
             System.out.println("Answer: "+answer);
-            session.ClearContent();
+            session.clearContent();
 
 
             //存入MongoDB

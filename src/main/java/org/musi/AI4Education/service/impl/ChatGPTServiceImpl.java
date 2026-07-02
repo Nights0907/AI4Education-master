@@ -1,5 +1,10 @@
 package org.musi.AI4Education.service.impl;
 
+import org.musi.AI4Education.domain.chat.ChatHistory;
+import org.musi.AI4Education.domain.chat.ChatSession;
+import org.musi.AI4Education.domain.chat.ExplanationChatHistory;
+import org.musi.AI4Education.domain.chat.FeimanChatHistory;
+import org.musi.AI4Education.domain.chat.InspirationChatHistory;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -7,7 +12,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import org.json.JSONException;
-import org.musi.AI4Education.domain.*;
 import org.musi.AI4Education.mapper.ChatHistoryMapper;
 import org.musi.AI4Education.service.BasicQuestionService;
 import org.musi.AI4Education.service.ChatGPTService;

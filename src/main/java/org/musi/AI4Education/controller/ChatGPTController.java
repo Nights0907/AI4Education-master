@@ -1,9 +1,12 @@
 package org.musi.AI4Education.controller;
 
+import org.musi.AI4Education.domain.chat.ExplanationChatHistory;
+import org.musi.AI4Education.domain.chat.FeimanChatHistory;
+import org.musi.AI4Education.domain.chat.InspirationChatHistory;
+import org.musi.AI4Education.domain.dto.AIAnswerDTO;
 import cn.dev33.satoken.stp.StpUtil;
 import org.json.JSONException;
 import org.musi.AI4Education.common.CommonResponse;
-import org.musi.AI4Education.domain.*;
 import org.musi.AI4Education.service.ChatGPTService;
 import org.musi.AI4Education.service.SpeechRecognitionService;
 import org.musi.AI4Education.service.StudentProfileService;

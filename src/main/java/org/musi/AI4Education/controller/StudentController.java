@@ -1,11 +1,11 @@
 package org.musi.AI4Education.controller;
 
+import org.musi.AI4Education.domain.dto.StudentDTO;
+import org.musi.AI4Education.domain.entity.Student;
+import org.musi.AI4Education.domain.request.LoginRequest;
+import org.musi.AI4Education.domain.response.LoginResponse;
 import cn.dev33.satoken.stp.StpUtil;
 import org.musi.AI4Education.common.CommonResponse;
-import org.musi.AI4Education.domain.LoginRequest;
-import org.musi.AI4Education.domain.LoginResponse;
-import org.musi.AI4Education.domain.Student;
-import org.musi.AI4Education.domain.StudentDTO;
 import org.musi.AI4Education.service.StudentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;

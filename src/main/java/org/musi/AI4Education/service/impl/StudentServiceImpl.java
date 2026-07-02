@@ -1,9 +1,9 @@
 package org.musi.AI4Education.service.impl;
 
+import org.musi.AI4Education.domain.entity.Student;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.musi.AI4Education.common.CommonResponse;
-import org.musi.AI4Education.domain.Student;
 import org.musi.AI4Education.mapper.StudentMapper;
 import org.musi.AI4Education.service.StudentService;
 import org.springframework.beans.factory.annotation.Autowired;

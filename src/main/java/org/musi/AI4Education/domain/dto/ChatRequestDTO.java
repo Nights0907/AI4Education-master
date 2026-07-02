@@ -1,15 +1,9 @@
-package org.musi.AI4Education.domain;
+package org.musi.AI4Education.domain.dto;
 
-import lombok.Data;
 import lombok.Data;
 
 import java.util.List;
 
-/**
- * @author Guowei Chi
- * @date 2023/2/14
- * @description:
- **/
 @Data
 public class ChatRequestDTO {
     private String model;

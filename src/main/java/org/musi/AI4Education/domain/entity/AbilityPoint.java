@@ -1,4 +1,4 @@
-package org.musi.AI4Education.domain;
+package org.musi.AI4Education.domain.entity;
 
 import lombok.Data;
 
@@ -9,7 +9,6 @@ import java.util.List;
 public class AbilityPoint {
 
     private String aid;      //能力 ID
-
     private String type;     //能力类型
 
     private List<String> qid;      //推导出题目ID

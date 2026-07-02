@@ -1,15 +1,13 @@
 package org.musi.AI4Education.service.impl;
 
+import org.musi.AI4Education.domain.entity.AbilityPoint;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import org.musi.AI4Education.domain.AbilityPoint;
 import org.musi.AI4Education.mapper.AbilityPointMapper;
 import org.musi.AI4Education.service.AbilityPointService;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 public class AbilityPointServiceImpl extends ServiceImpl<AbilityPointMapper, AbilityPoint> implements AbilityPointService {

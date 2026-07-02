@@ -1,5 +1,9 @@
 package org.musi.AI4Education.controller;
 
+import org.musi.AI4Education.domain.chat.ChatHistory;
+import org.musi.AI4Education.domain.chat.WrongReasonChatHistory;
+import org.musi.AI4Education.domain.entity.BasicQuestion;
+import org.musi.AI4Education.domain.entity.ConcreteQuestion;
 import cn.dev33.satoken.stp.StpUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7,7 +11,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.musi.AI4Education.common.CommonResponse;
 import org.musi.AI4Education.config.Wen_XinConfig;
-import org.musi.AI4Education.domain.*;
 import org.musi.AI4Education.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;

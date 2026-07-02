@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-public class getJSONController {
+public class JsonController {
     //上传文件存储路径
     String uploadDirectory = "uploadByFront_language/";
     @PostMapping("/upload/{userid}/{systemname}")

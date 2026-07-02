@@ -1,11 +1,10 @@
 package org.musi.AI4Education.service;
 
+import org.musi.AI4Education.domain.entity.BasicQuestion;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.json.JSONException;
 import org.musi.AI4Education.common.CommonResponse;
-import org.musi.AI4Education.domain.BasicQuestion;
-import org.musi.AI4Education.domain.KnowledgePoint;
 
 import java.util.HashMap;
 import java.util.List;

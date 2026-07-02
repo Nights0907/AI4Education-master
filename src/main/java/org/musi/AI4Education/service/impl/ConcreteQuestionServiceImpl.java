@@ -1,5 +1,11 @@
 package org.musi.AI4Education.service.impl;
 
+import org.musi.AI4Education.domain.chat.ChatHistory;
+import org.musi.AI4Education.domain.chat.ChatSession;
+import org.musi.AI4Education.domain.chat.WrongReasonChatHistory;
+import org.musi.AI4Education.domain.entity.QuestionStep;
+import org.musi.AI4Education.domain.entity.BasicQuestion;
+import org.musi.AI4Education.domain.entity.ConcreteQuestion;
 import cn.dev33.satoken.stp.StpUtil;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -16,7 +22,6 @@ import org.bson.Document;
 import org.json.JSONException;
 import org.musi.AI4Education.common.CommonResponse;
 import org.musi.AI4Education.config.Wen_XinConfig;
-import org.musi.AI4Education.domain.*;
 import org.musi.AI4Education.mapper.ConcreteQuestionMapper;
 import org.musi.AI4Education.model.wenxin.WenxinChatModel;
 import org.musi.AI4Education.prompt.PromptKeys;

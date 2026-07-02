@@ -1,6 +1,5 @@
-package org.musi.AI4Education.domain;
+package org.musi.AI4Education.domain.entity;
 
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 @Data

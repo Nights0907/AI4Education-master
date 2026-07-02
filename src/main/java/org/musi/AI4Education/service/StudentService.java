@@ -1,8 +1,8 @@
 package org.musi.AI4Education.service;
 
+import org.musi.AI4Education.domain.entity.Student;
 import com.baomidou.mybatisplus.extension.service.IService;
 import org.musi.AI4Education.common.CommonResponse;
-import org.musi.AI4Education.domain.Student;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.multipart.MultipartFile;
 

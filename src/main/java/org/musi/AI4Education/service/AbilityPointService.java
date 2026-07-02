@@ -1,8 +1,7 @@
 package org.musi.AI4Education.service;
 
+import org.musi.AI4Education.domain.entity.AbilityPoint;
 import com.baomidou.mybatisplus.extension.service.IService;
-import org.musi.AI4Education.domain.AbilityPoint;
-import org.musi.AI4Education.domain.BasicQuestion;
 
 import java.util.List;
 

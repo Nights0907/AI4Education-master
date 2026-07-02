@@ -1,11 +1,11 @@
 package org.musi.AI4Education.service;
 
+import org.musi.AI4Education.domain.chat.ChatHistory;
+import org.musi.AI4Education.domain.chat.ExplanationChatHistory;
+import org.musi.AI4Education.domain.chat.FeimanChatHistory;
+import org.musi.AI4Education.domain.chat.InspirationChatHistory;
 import com.baomidou.mybatisplus.extension.service.IService;
 import org.json.JSONException;
-import org.musi.AI4Education.domain.ChatHistory;
-import org.musi.AI4Education.domain.ExplanationChatHistory;
-import org.musi.AI4Education.domain.FeimanChatHistory;
-import org.musi.AI4Education.domain.InspirationChatHistory;
 
 import java.util.HashMap;
 import java.util.List;

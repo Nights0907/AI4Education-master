@@ -1,10 +1,8 @@
 package org.musi.AI4Education.controller;
 
+import org.musi.AI4Education.domain.entity.History;
 import cn.dev33.satoken.stp.StpUtil;
 import org.musi.AI4Education.common.CommonResponse;
-import org.musi.AI4Education.domain.History;
-import org.musi.AI4Education.domain.Student;
-import org.musi.AI4Education.service.BasicQuestionService;
 import org.musi.AI4Education.service.HistoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Date;
 import java.util.List;
 
 @RestController

@@ -1,7 +1,7 @@
 package org.musi.AI4Education.service;
 
+import org.musi.AI4Education.domain.entity.AliyunOSS;
 import com.baomidou.mybatisplus.extension.service.IService;
-import org.musi.AI4Education.domain.AliyunOSS;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 

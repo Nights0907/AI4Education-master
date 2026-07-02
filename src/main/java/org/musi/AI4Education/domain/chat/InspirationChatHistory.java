@@ -1,13 +1,11 @@
-package org.musi.AI4Education.domain;
-
+package org.musi.AI4Education.domain.chat;
 
 import lombok.Data;
 
 import java.util.HashMap;
 import java.util.List;
-
 @Data
-public class ChatHistory {
+public class InspirationChatHistory {
     private String sid;
     private String qid;
     private List<HashMap<String,String>> wenxinChatHistory;

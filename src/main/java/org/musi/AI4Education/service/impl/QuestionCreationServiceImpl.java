@@ -1,14 +1,14 @@
 package org.musi.AI4Education.service.impl;
 
+import org.musi.AI4Education.domain.entity.AbilityPoint;
+import org.musi.AI4Education.domain.entity.KnowledgePoint;
+import org.musi.AI4Education.domain.entity.QuestionStep;
+import org.musi.AI4Education.domain.entity.BasicQuestion;
+import org.musi.AI4Education.domain.entity.ConcreteQuestion;
+import org.musi.AI4Education.domain.entity.History;
+import org.musi.AI4Education.domain.entity.StudentProfile;
 import org.json.JSONObject;
 import org.musi.AI4Education.common.CommonResponse;
-import org.musi.AI4Education.domain.AbilityPoint;
-import org.musi.AI4Education.domain.BasicQuestion;
-import org.musi.AI4Education.domain.ConcreteQuestion;
-import org.musi.AI4Education.domain.History;
-import org.musi.AI4Education.domain.KnowledgePoint;
-import org.musi.AI4Education.domain.QuestionStep;
-import org.musi.AI4Education.domain.StudentProfile;
 import org.musi.AI4Education.service.AbilityPointService;
 import org.musi.AI4Education.service.BasicQuestionService;
 import org.musi.AI4Education.service.ConcreteQuestionService;

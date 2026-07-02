@@ -1,17 +1,17 @@
 package org.musi.AI4Education.service;
 
+import org.musi.AI4Education.domain.chat.ChatHistory;
+import org.musi.AI4Education.domain.chat.WrongReasonChatHistory;
+import org.musi.AI4Education.domain.entity.QuestionStep;
+import org.musi.AI4Education.domain.entity.ConcreteQuestion;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.extension.service.IService;
-import dev.langchain4j.service.SystemMessage;
 import org.json.JSONException;
 import org.musi.AI4Education.common.CommonResponse;
-import org.musi.AI4Education.domain.*;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Flux;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 

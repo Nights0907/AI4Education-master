@@ -1,19 +1,22 @@
 package org.musi.AI4Education.service.impl;
 
+import org.musi.AI4Education.domain.chat.ChatSession;
+import org.musi.AI4Education.domain.chat.ExplanationChatHistory;
+import org.musi.AI4Education.domain.chat.FeimanChatHistory;
+import org.musi.AI4Education.domain.chat.InspirationChatHistory;
+import org.musi.AI4Education.domain.dto.AIAnswerDTO;
+import org.musi.AI4Education.domain.entity.AbilityPoint;
+import org.musi.AI4Education.domain.entity.CharacterPoint;
+import org.musi.AI4Education.domain.dto.ChatRequestDTO;
+import org.musi.AI4Education.domain.entity.KnowledgePoint;
+import org.musi.AI4Education.domain.entity.BasicQuestion;
+import org.musi.AI4Education.domain.entity.StudentProfile;
 import cn.dev33.satoken.stp.StpUtil;
-import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 
-import org.musi.AI4Education.domain.BasicQuestion;
-import org.musi.AI4Education.domain.ChatHistory;
-import org.musi.AI4Education.domain.StudentProfile;
-import com.fasterxml.jackson.databind.JsonNode;
-import org.musi.AI4Education.domain.*;
 import org.musi.AI4Education.config.Wen_XinConfig;
 import org.musi.AI4Education.mapper.BasicQuestionMapper;
 import org.musi.AI4Education.mapper.StudentProfileMapper;
@@ -28,10 +31,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -41,7 +40,6 @@ import reactor.core.publisher.Flux;
 
 
 import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
 import java.io.IOException;
 import java.sql.Date;
 import java.time.LocalDate;
@@ -252,7 +250,7 @@ public class StudentProfileServiceImpl extends ServiceImpl<StudentProfileMapper,
 
             //清空当前sesssion内容，为下一次存储做准备
             System.out.println("Answer: "+answer);
-            session.ClearContent();
+            session.clearContent();
 
             List<CharacterPoint> characterPointList = new ArrayList<>();
 

@@ -1,5 +1,6 @@
 package org.musi.AI4Education.service.impl;
 
+import org.musi.AI4Education.domain.entity.AliyunOSS;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClient;
 import com.aliyun.oss.model.GetObjectRequest;
@@ -7,7 +8,6 @@ import com.aliyun.oss.model.GetObjectRequest;
 import com.aliyun.oss.model.OSSObject;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.musi.AI4Education.config.OSSConfig;
-import org.musi.AI4Education.domain.AliyunOSS;
 import org.musi.AI4Education.mapper.OSSMapper;
 import org.musi.AI4Education.service.OSSService;
 import org.springframework.stereotype.Service;

@@ -1,5 +1,7 @@
 package org.musi.AI4Education.service.impl;
 
+import org.musi.AI4Education.domain.entity.BasicQuestion;
+import org.musi.AI4Education.domain.entity.ConcreteQuestion;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
@@ -9,8 +11,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.json.JSONException;
 import org.musi.AI4Education.common.CommonResponse;
-import org.musi.AI4Education.domain.BasicQuestion;
-import org.musi.AI4Education.domain.ConcreteQuestion;
 import org.musi.AI4Education.mapper.BasicQuestionMapper;
 import org.musi.AI4Education.service.BasicQuestionService;
 import org.springframework.beans.factory.annotation.Autowired;

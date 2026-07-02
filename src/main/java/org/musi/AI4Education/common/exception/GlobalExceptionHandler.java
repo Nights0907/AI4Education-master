@@ -1,6 +1,5 @@
-package org.musi.AI4Education.utils;
+package org.musi.AI4Education.common.exception;
 
-import lombok.extern.slf4j.Slf4j;
 import org.musi.AI4Education.common.CommonResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,8 +11,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-@ControllerAdvice//通过这个注解，可以将这个方法切入到每一个Controller中去
-@Slf4j
+@ControllerAdvice
 public class GlobalExceptionHandler {
 
     Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);

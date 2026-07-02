@@ -1,4 +1,4 @@
-package org.musi.AI4Education.domain;
+package org.musi.AI4Education.domain.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
